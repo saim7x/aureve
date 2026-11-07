@@ -1,7 +1,11 @@
-﻿export const metadata = {
+export const metadata = {
   title: 'AUREVÉ — Elegance in Every Detail',
   description: 'Handcrafted luxury accessories and custom base lights.',
+  icons: {
+    icon: '/images/logo.png', // public ফোল্ডারের ভেতরের ফোল্ডার ও ফাইলের পাথ
+  },
 };
+
 export default function RootLayout({ children }) {
   return (
     <html lang="bn">
