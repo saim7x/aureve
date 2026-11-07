@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -296,9 +296,9 @@ export default function ExpensesPage() {
   const returnedCount = returnedOrdersList.length;
   const cancelledCount = cancelledOrdersList.length;
   
+  // শুধুমাত্র রিটার্ন ডেলিভারি লস হিসাব করা হচ্ছে
   const returnedDeliveryLoss = returnedOrdersList.reduce((sum, o) => sum + (parseFloat(o.delivery_charge) || 0), 0);
-  const cancelledDeliveryLoss = cancelledOrdersList.reduce((sum, o) => sum + (parseFloat(o.delivery_charge) || 0), 0);
-  const totalDeliveryLoss = returnedDeliveryLoss + cancelledDeliveryLoss;
+  const totalDeliveryLoss = returnedDeliveryLoss; // বাতিল ডেলিভারি লস বাদ দেওয়া হয়েছে
 
   const totalExpensesAmount = expenses.reduce((sum, e) => sum + (parseFloat(e.amount) || 0), 0);
 
@@ -360,7 +360,7 @@ export default function ExpensesPage() {
                     <h4 style={{ color: '#D4AF7C', marginBottom: '12px', fontSize: '14px', borderBottom: '1px solid #222', paddingBottom: '8px' }}>⏳ Pending / Processing Orders</h4>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: '#8A8A8A' }}>মোট অর্ডার সংখ্যা (যাবতীয়):</span>
+                        <span style={{ color: '#8A8A8A' }}>মোট অর্ডার সংখ্যা (যাবتীয়):</span>
                         <strong style={{ color: '#FAF9F6' }}>{totalOrdersCount} টি</strong>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -409,10 +409,10 @@ export default function ExpensesPage() {
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <span style={{ color: '#8A8A8A' }}>বাতিল (Cancelled) অর্ডার সংখ্যা:</span>
-                        <strong style={{ color: '#95a5a6' }}>{cancelledCount} টি (৳ {cancelledDeliveryLoss})</strong>
+                        <strong style={{ color: '#95a5a6' }}>{cancelledCount} টি</strong>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px dashed #333', paddingTop: '6px', marginTop: '4px' }}>
-                        <span style={{ color: '#8A8A8A', fontWeight: 'bold' }}>মোট ডেলিভারি লস:</span>
+                        <span style={{ color: '#8A8A8A', fontWeight: 'bold' }}>রিটার্ন ডেলিভারি লস:</span>
                         <strong style={{ color: '#e74c3c' }}>৳ {totalDeliveryLoss}</strong>
                       </div>
                     </div>
@@ -532,7 +532,7 @@ export default function ExpensesPage() {
                           <strong style={{ fontSize: '15px', color: '#3498db' }}>৳ {deliveredDeliveryCharge}</strong>
                         </div>
                         <div style={{ backgroundColor: '#161616', padding: '12px', borderRadius: '4px', border: '1px solid #222' }}>
-                          <span style={{ color: '#8A8A8A', display: 'block', marginBottom: '4px' }}>রিটার্নড/বাতিল ডেলিভারি লস:</span>
+                          <span style={{ color: '#8A8A8A', display: 'block', marginBottom: '4px' }}>রিটার্ন ডেলিভারি লস:</span>
                           <strong style={{ fontSize: '15px', color: '#e74c3c' }}>৳ {totalDeliveryLoss}</strong>
                         </div>
 
