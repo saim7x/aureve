@@ -1,5 +1,5 @@
-﻿'use client';
-import { useEffect, useState } from 'react';
+'use client';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
@@ -15,6 +15,12 @@ export default function ProductDetailPage() {
   const [quantity, setQuantity] = useState(1);
   const [cartCount, setCartCount] = useState(0);
   const [toastMessage, setToastMessage] = useState('');
+  
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // টাচ সোয়াইপ হ্যান্ডেল করার জন্য রিফ (Touch Swipe Refs)
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
 
   useEffect(() => {
     async function fetchProductAndReviews() {
@@ -93,6 +99,29 @@ export default function ProductDetailPage() {
     router.push('/cart');
   };
 
+  // টাচ সোয়াইপ ডিটেক্ট করার ফাংশন
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchMove = (e) => {
+    touchEndX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (!productImages || productImages.length <= 1) return;
+    const distance = touchStartX.current - touchEndX.current;
+    const minSwipeDistance = 50; // ন্যূনতম কতটুকু সোয়াইপ করলে কাজ করবে
+
+    if (distance > minSwipeDistance) {
+      // বাম দিকে সোয়াইপ করলে পরবর্তী ছবি আসবে
+      setCurrentImageIndex(prev => (prev === productImages.length - 1 ? 0 : prev + 1));
+    } else if (distance < -minSwipeDistance) {
+      // ডান দিকে সোয়াইপ করলে পূর্ববর্তী ছবি আসবে
+      setCurrentImageIndex(prev => (prev === 0 ? productImages.length - 1 : prev - 1));
+    }
+  };
+
   if (loading) {
     return <div style={{ textAlign: 'center', padding: '100px', fontFamily: "'Montserrat', sans-serif" }}>Loading product details...</div>;
   }
@@ -101,18 +130,21 @@ export default function ProductDetailPage() {
   }
 
   const isOutOfStock = product.stock <= 0;
-  const imageUrl = (product.images && product.images[0]) ? product.images[0] : (product.image || product.img || '/images/collection-1.jpg');
+  
+  const productImages = (product.images && product.images.length > 0) 
+    ? product.images 
+    : [product.image || product.img || '/images/collection-1.jpg'];
+
+  const currentImageUrl = productImages[currentImageIndex] || productImages[0];
+
   const averageRating = reviews.length > 0 
     ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) 
     : 'No ratings yet';
 
-  // প্রাইস এবং ডিসকাউন্ট ক্যালকুলেশন
   const currentPrice = parseFloat(product.price) || 0;
-  // সুপাবেজের কলাম থেকে original_price বা cut_price চেক করা হচ্ছে
   const rawOriginalPrice = product.original_price || product.cut_price || product.old_price;
   const originalPrice = rawOriginalPrice ? parseFloat(rawOriginalPrice) : 0;
 
-  // ডিসকাউন্ট তখনই দেখাবে যদি originalPrice বর্তমান price এর চেয়ে বেশি হয়
   const hasDiscount = originalPrice > currentPrice;
   const discountPercent = hasDiscount ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100) : 0;
 
@@ -168,13 +200,68 @@ export default function ProductDetailPage() {
         </button>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px' }} className="product-detail-grid">
-          {/* Product Image */}
-          <div style={{ height: '400px', backgroundColor: '#EDE6D9', borderRadius: '6px', overflow: 'hidden', border: '1px solid #EDE6D9', position: 'relative' }}>
-            <img src={imageUrl} alt={product.title || product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            {hasDiscount && (
-              <span style={{ position: 'absolute', top: '12px', left: '12px', backgroundColor: '#D4AF7C', color: '#080808', fontSize: '11px', fontWeight: 'bold', padding: '4px 10px', borderRadius: '3px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                {discountPercent}% OFF
-              </span>
+          
+          {/* Product Image Gallery Section with Swipe and Desktop Arrows */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <div 
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              style={{ height: '380px', backgroundColor: '#EDE6D9', borderRadius: '6px', overflow: 'hidden', border: '1px solid #EDE6D9', position: 'relative', cursor: 'grab' }}
+            >
+              <img src={currentImageUrl} alt={product.title || product.name} style={{ width: '100%', height: '100%', objectFit: 'cover', userSelect: 'none' }} />
+              
+              {hasDiscount && (
+                <span style={{ position: 'absolute', top: '12px', left: '12px', backgroundColor: '#D4AF7C', color: '#080808', fontSize: '11px', fontWeight: 'bold', padding: '4px 10px', borderRadius: '3px', textTransform: 'uppercase', letterSpacing: '1px', pointerEvents: 'none' }}>
+                  {discountPercent}% OFF
+                </span>
+              )}
+
+              {/* Desktop / Mobile Arrow Buttons */}
+              {productImages.length > 1 && (
+                <>
+                  <button 
+                    onClick={() => setCurrentImageIndex(prev => (prev === 0 ? productImages.length - 1 : prev - 1))}
+                    style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', backgroundColor: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', zIndex: 10, transition: 'background 0.2s' }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.8)'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.6)'}
+                  >
+                    ❮
+                  </button>
+                  <button 
+                    onClick={() => setCurrentImageIndex(prev => (prev === productImages.length - 1 ? 0 : prev + 1))}
+                    style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', backgroundColor: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', zIndex: 10, transition: 'background 0.2s' }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.8)'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.6)'}
+                  >
+                    ❯
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Thumbnail Gallery */}
+            {productImages.length > 1 && (
+              <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '5px' }}>
+                {productImages.map((img, index) => (
+                  <div 
+                    key={index}
+                    onClick={() => setCurrentImageIndex(index)}
+                    style={{ 
+                      width: '70px', 
+                      height: '70px', 
+                      borderRadius: '4px', 
+                      overflow: 'hidden', 
+                      cursor: 'pointer', 
+                      border: currentImageIndex === index ? '2px solid #D4AF7C' : '1px solid #EDE6D9',
+                      backgroundColor: '#EDE6D9',
+                      flexShrink: 0
+                    }}
+                  >
+                    <img src={img} alt={`Thumbnail ${index + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 
@@ -184,12 +271,10 @@ export default function ProductDetailPage() {
               {product.category || 'Signature Collection'}
             </span>
             
-            {/* প্রডাক্টের টাইটেল */}
             <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: '30px', fontWeight: 'bold', margin: '0 0 12px 0', color: '#080808' }}>
               {product.title || product.name}
             </h1>
 
-            {/* প্রাইস এবং ডিসকাউন্ট লেআউট (কাট প্রাইস ও পার্সেন্টেজসহ) */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '0 0 15px 0', flexWrap: 'wrap' }}>
               <span style={{ color: '#D4AF7C', fontWeight: 'bold', fontSize: '24px' }}>
                 ৳ {currentPrice}
@@ -206,7 +291,6 @@ export default function ProductDetailPage() {
               )}
             </div>
             
-            {/* Rating Summary Header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '15px', fontSize: '13px', fontWeight: '600', color: '#555' }}>
               <span style={{ color: '#D4AF7C', fontSize: '16px' }}>★</span>
               <span>{averageRating} {reviews.length > 0 ? `(${reviews.length} reviews)` : ''}</span>
@@ -220,7 +304,6 @@ export default function ProductDetailPage() {
               {product.description || 'A timeless handcrafted accessory designed with precision and elegance. Perfect for every occasion.'}
             </p>
 
-            {/* Quantity Selector */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '25px' }}>
               <span style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: '600', letterSpacing: '1px' }}>Quantity:</span>
               <div style={{ display: 'flex', alignItems: 'center', border: '1px solid #EDE6D9', backgroundColor: '#FFF' }}>
@@ -230,7 +313,6 @@ export default function ProductDetailPage() {
               </div>
             </div>
 
-            {/* Action Buttons */}
             <div style={{ display: 'flex', gap: '15px' }}>
               <button 
                 onClick={addToCart}
@@ -254,7 +336,7 @@ export default function ProductDetailPage() {
         <div style={{ marginTop: '60px', borderTop: '1px solid #EDE6D9', paddingTop: '40px' }}>
           <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '24px', marginBottom: '20px' }}>Customer Reviews</h3>
           {reviews.length === 0 ? (
-            <p style={{ color: '#8A8A8A', fontSize: '13px' }}>No reviews for this product yet. Be the first to review after purchase!প্র</p>
+            <p style={{ color: '#8A8A8A', fontSize: '13px' }}>No reviews for this product yet. Be the first to review after purchase!</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               {reviews.map((rev, idx) => (
