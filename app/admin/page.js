@@ -78,7 +78,7 @@ export default function AdminPanel() {
         order.items.forEach(item => { subtotal += (item.price || 0) * (item.quantity || 1); });
       }
       order.items.forEach((item) => {
-        const itemName = item.name || item.product_name || item.title || item.product_title || 'Handcrafted Bracelet';
+        const itemName = item.name || item.product_name || item.title || item.product_title || 'Handcrafted Item';
         const itemImage = item.image || item.img || item.product_image || '';
         const itemQty = item.quantity || item.qty || 1;
         const itemPrice = item.price || 0;
@@ -190,17 +190,17 @@ export default function AdminPanel() {
     printWindow.document.close();
   };
 
-  // 'Admin Verified' স্ট্যাটাসের সকল অর্ডার এক ক্লিকে A4 পেপারে গ্রিড আকারে প্রিন্ট করার ফাংশন
-  const handlePrintAllVerifiedA4 = (verifiedOrders) => {
-    if (!verifiedOrders || verifiedOrders.length === 0) {
-      alert('প্রিন্ট করার মতো কোনো "Admin Verified" অর্ডার নেই!');
+  // প্রসেসিং অর্ডারের জন্য একসাথে A4 পেপারে একাধিক স্টিকার গ্রিড আকারে প্রিন্ট করার ফাংশন
+  const handlePrintAllProcessingA4 = (processingOrders) => {
+    if (!processingOrders || processingOrders.length === 0) {
+      alert('প্রিন্ট করার মতো কোনো "Processing" অর্ডার নেই!');
       return;
     }
 
     const printWindow = window.open('', '_blank');
     let allStickersHtml = '';
 
-    verifiedOrders.forEach((order) => {
+    processingOrders.forEach((order) => {
       let itemsHtml = '';
       let subtotal = order.subtotal || 0;
 
@@ -209,7 +209,7 @@ export default function AdminPanel() {
           order.items.forEach(item => { subtotal += (item.price || 0) * (item.quantity || 1); });
         }
         order.items.forEach((item) => {
-          const itemName = item.name || item.product_name || item.title || item.product_title || 'Handcrafted Bracelet';
+          const itemName = item.name || item.product_name || item.title || item.product_title || 'Handcrafted Item';
           const itemImage = item.image || item.img || item.product_image || '';
           const itemQty = item.quantity || item.qty || 1;
           const itemPrice = item.price || 0;
@@ -283,11 +283,11 @@ export default function AdminPanel() {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Admin Verified Stickers - A4 Grid</title>
+        <title>Processing Stickers - A4 Grid</title>
         <style>
           @page { size: A4; margin: 10mm; }
           body { font-family: 'Helvetica Neue', Arial, sans-serif; background: #fff; margin: 0; padding: 0; color: #000; }
-          .a4-page { width: 190mm; min-height: 277mm; margin: 0 auto; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10mm; align-content: start; page-break-after: always; }
+          .a4-container { width: 190mm; margin: 0 auto; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10mm; align-content: start; }
           .sticker-card { border: 2px solid #000; padding: 12px; border-radius: 6px; background: #fff; box-sizing: border-box; height: fit-content; page-break-inside: avoid; break-inside: avoid; }
           .no-print { position: fixed; bottom: 20px; right: 20px; background: #000; color: #fff; padding: 12px 25px; border-radius: 6px; font-weight: bold; cursor: pointer; border: none; z-index: 1000; }
           @media print {
@@ -297,7 +297,7 @@ export default function AdminPanel() {
         </style>
       </head>
       <body>
-        <div class="a4-page">
+        <div class="a4-container">
           ${allStickersHtml}
         </div>
         <button class="no-print" onclick="window.print()">🖨️ Print All on A4</button>
@@ -314,7 +314,8 @@ export default function AdminPanel() {
     printWindow.document.close();
   };
 
-  const sendWhatsAppNotification = (order, targetStatus) => {
+  // প্রফেশনাল ও রয়্যাল হোয়াটসঅ্যাপ মেসেজ জেনারেটর (প্রোডাক্ট টাইটেল ও কনফার্মেশন রিকোয়েস্টসহ)
+  const sendWhatsAppNotification = (order) => {
     const phone = order.whatsapp || order.mobile || order.phone;
     if (!phone) {
       alert('কাস্টমারের হোয়াটসঅ্যাপ বা মোবাইল নম্বর পাওয়া যায়নি!');
@@ -333,33 +334,45 @@ export default function AdminPanel() {
     const trackingLink = `${protocol}${host}/track?orderId=${cleanOrderCode}`;
     const reviewLink = `${protocol}${host}/review?order_id=${order.id}`;
 
-    let msg = `Hello *${order.customer_name}*,\n\n`;
+    // অর্ডারের প্রোডাক্টের নাম বা টাইটেল বের করা
+    let productTitle = order.product_name || '';
+    if (!productTitle && order.items && Array.isArray(order.items) && order.items.length > 0) {
+      productTitle = order.items.map(i => i.name || i.product_name || i.title || i.product_title).filter(Boolean).join(', ');
+    }
+    if (!productTitle) {
+      productTitle = 'Aurevé Handcrafted Item';
+    }
 
-    if (targetStatus === 'Pending' || targetStatus === 'Pending Verification') {
-      msg += `আপনার *AUREVÉ* অর্ডারটি (*${order.order_id}*) সফলভাবে আমাদের কাছে পৌঁছেছে!\n\n`;
-      msg += ` মোট মূল্য: ৳${order.total_amount || order.grand_total}\n\n`;
-      msg += `❓ *অর্ডার ভেরিফিকেশন:* আপনি কি সত্যিই এই পার্সেলটি গ্রহণ করতে চান? আপনি যদি পার্সেলটি নিতে ইচ্ছুক হন, তবে অনুগ্রহ করে এই চ্যাটে শুধু **"Yes"** বা **"Confirm"** লিখে রিপ্লাই দিন!\n\n`;
-      msg += ` আপনার পার্সেল স্ট্যাটাস দেখতে ক্লিক করুন:\n${trackingLink}\n\n`;
-      msg += `*AUREVÉ — Elegance in Every Detail.*`;
-    } else if (targetStatus === 'Admin Verified' || targetStatus === 'Confirmed') {
-      msg += `ধন্যবাদ! আপনার *AUREVÉ* অর্ডারটি (*${order.order_id}*) সফলভাবে **ভেরিফাই ও কনফার্ম** করা হয়েছে।\n\n`;
-      msg += ` আপনার পার্সেলটির লাইভ ট্র্যাকিং লিংক:\n${trackingLink}\n\n`;
-      msg += `খুব শীঘ্রই আপনার পার্সেলটির প্যাকেজিং ও ডেলিভারি প্রক্রিয়া শুরু হবে।`;
-    } else if (targetStatus === 'Shipped' || targetStatus === 'Processing') {
-      msg += `আপনার *AUREVÉ* পার্সেলটি (*${order.order_id}*) এখন ডেলিভারির পথে রয়েছে (**Shipped**)! 🚚\n\n`;
-      msg += ` পার্সেল কোথায় আছে লাইভ চেক করুন:\n${trackingLink}\n\n`;
-      msg += `অনুগ্রহ করে ডেলিভারি ম্যানের জন্য প্রস্তুত থাকুন। ধন্যবাদ!`;
-    } else if (targetStatus === 'Delivered') {
-      msg += `আপনার *AUREVÉ* পার্সেলটি (*${order.order_id}*) সফলভাবে আপনার হাতে **পৌঁছে গেছে (Delivered)**! ✨\n\n`;
-      msg += `আমাদের প্রোডাক্টটি আপনার কেমন লাগলো তা জানাতে এবং আপনার মূল্যবান রিভিউ দিতে নিচের লিংকে প্রবেশ করুন:\n${reviewLink}\n\n`;
-      msg += `আমাদের সাথে থাকার জন্য অনেক ধন্যবাদ!\n*AUREVÉ*`;
-    } else if (targetStatus === 'Returned') {
-      msg += `আপনার *AUREVÉ* পার্সেলটি (*${order.order_id}*) নির্দিষ্ট ঠিকানায় না পাওয়ার কারণে বা রিসিভ না করায় **রিটার্ন (Returned)** হয়েছে। কোনো সহায়তার জন্য যোগাযোগ করুন।\n\n*AUREVÉ*`;
-    } else if (targetStatus === 'Cancelled') {
-      msg += `আপনার *AUREVÉ* অর্ডারটি (*${order.order_id}*) বাতিল (**Cancelled**) করা হয়েছে। ধন্যবাদ!\n\n*AUREVÉ*`;
+    const currentStatus = order.order_status || 'Pending';
+    let msg = `✨ *AUREVÉ* | *Elegance in Every Detail* ✨\n\n`;
+    msg += `Dear *${order.customer_name}*,\n`;
+
+    if (currentStatus === 'Pending') {
+      msg += `আমরা আপনার অর্ডারটি সফলভাবে গ্রহণ করেছি। অর্ডারের নাম: *${productTitle}* (অর্ডার আইডি: *${order.order_id}*)\n\n`;
+      msg += `📦 *Order Summary:*\n`;
+      msg += `• Total Amount: ৳${order.total_amount || order.grand_total}\n\n`;
+      msg += `❓ আপনি কি সত্যিই এই পার্সেলটি গ্রহণ করতে চান? আপনি যদি নিতে ইচ্ছুক হন, তবে অনুগ্রহ করে এই চ্যাটে শুধু **"Yes"** বা **"Confirm"** লিখে রিপ্লাই দিন!\n\n`;
+      msg += `🔍 Track Your Order:\n${trackingLink}\n\n`;
+      msg += `Thank you for choosing AUREVÉ.`;
+    } else if (currentStatus === 'Processing') {
+      msg += `আপনার অর্ডারটি (*${productTitle}*) সফলভাবে **কনফার্ম ও প্রসেসিং** করা হয়েছে। খুব শীঘ্রই আপনার এক্সক্লুসিভ পার্সেলটি নিখুঁতভাবে প্যাক করা হবে। ✨\n\n`;
+      msg += `🔍 Track Order Live:\n${trackingLink}\n\n`;
+      msg += `আমাদের সাথে থাকার জন্য আপনাকে অসংখ্য ধন্যবাদ।`;
+    } else if (currentStatus === 'Shipped') {
+      msg += `সুসংবাদ! আপনার এক্সক্লুসিভ পার্সেলটি (*${productTitle}*) এখন আপনার ঠিকানার উদ্দেশ্যে ডিসপ্যাচ বা **Shipped** করা হয়েছে। 🚚✨\n\n`;
+      msg += `🔍 Live Tracking:\n${trackingLink}\n\n`;
+      msg += `অনুগ্রহ করে ডেলিভারি প্রতিনিধির জন্য আপনার ফোনটি সচল রাখুন।`;
+    } else if (currentStatus === 'Delivered') {
+      msg += `আপনার পার্সেলটি (*${productTitle}*) সফলভাবে আপনার হাতে পৌঁছে গেছে (**Delivered**)! আশা করি **AUREVÉ**-এর সাথে আপনার অভিজ্ঞতা অসাধারণ ছিল। ✨\n\n`;
+      msg += `আমাদের প্রোডাক্ট সম্পর্কে আপনার মূল্যবান রিভিউ ও মতামত জানাতে ভিজিট করুন:\n${reviewLink}\n\n`;
+      msg += `রয়্যাল এলিগেন্স বজায় রাখতে আবার আপনাকে আমন্ত্রণ জানাচ্ছি। ধন্যবাদ!`;
+    } else if (currentStatus === 'Returned')  {
+      msg += `আপডেট: আপনার অর্ডারটি (*${productTitle}*) ডেলিভারি সম্পন্ন না হওয়ার কারণে রিটার্ন করা হয়েছে। কোনো সহায়তার প্রয়োজন হলে আমাদের সাথে যোগাযোগ করুন।\n\n*AUREVÉ Support*`;
+    } else if (currentStatus === 'Cancelled') {
+      msg += `বিজ্ঞপ্তি: আপনার অর্ডারটি (*${productTitle}*) বাতিল (**Cancelled**) করা হয়েছে। ভবিষ্যতে আপনাকে সেবা দেওয়ার অপেক্ষায় রইলাম।\n\n*AUREVÉ*`;
     } else {
-      msg += `আপনার *AUREVÉ* পার্সেলের (*${order.order_id}*) বর্তমান অবস্থা: *${targetStatus}*。\n\n`;
-      msg += `ট্র্যাকিং লিংক: ${trackingLink}`;
+      msg += `আপনার অর্ডার (*${productTitle}*)-এর বর্তমান আপডেট: *${currentStatus}*。\n\n`;
+      msg += `স্ট্যটাস চেক করুন: ${trackingLink}`;
     }
 
     const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
@@ -388,11 +401,6 @@ export default function AdminPanel() {
     } else {
       setOrders(prev => prev.map(o => o.id === order.id ? { ...o, order_status: newStatus } : o));
       alert(`অর্ডার স্ট্যাটাস সফলভাবে '${newStatus}' এ আপডেট ও ডেটাবেজে সেভ হয়েছে!`);
-      
-      const shouldNotify = window.confirm(`আপনি কি কাস্টমারকে হোয়াটসঅ্যাপে বার্তা পাঠাতে চান?`);
-      if (shouldNotify) {
-        sendWhatsAppNotification({ ...order, order_status: newStatus }, newStatus);
-      }
     }
   };
 
@@ -429,8 +437,9 @@ export default function AdminPanel() {
     const currentStatus = o.order_status || 'Pending';
     if (filterStatus === 'All') return true;
     if (filterStatus === 'Pending') return currentStatus === 'Pending';
-    if (filterStatus === 'Pending Verification') return currentStatus === 'Pending Verification';
-    if (filterStatus === 'Admin Verified') return currentStatus === 'Admin Verified' || currentStatus === 'Confirmed';
+    if (filterStatus === 'Processing') return currentStatus === 'Processing' || currentStatus === 'Admin Verified' || currentStatus === 'Confirmed';
+    if (filterStatus === 'Shipped') return currentStatus === 'Shipped';
+    if (filterStatus === 'Delivered') return currentStatus === 'Delivered';
     if (filterStatus === 'Returned') return currentStatus === 'Returned';
     if (filterStatus === 'Cancelled') return currentStatus === 'Cancelled';
     return currentStatus === filterStatus;
@@ -451,12 +460,10 @@ export default function AdminPanel() {
     return sum + (o.total_amount || o.grand_total || 0);
   }, 0);
 
-  const pendingCount = orders.filter(o => o.order_status === 'Pending').length;
-  const pendingVerifyCount = orders.filter(o => !o.order_status || o.order_status === 'Pending Verification').length;
-  const verifiedCount = orders.filter(o => o.order_status === 'Admin Verified' || o.order_status === 'Confirmed').length;
+  const pendingCount = orders.filter(o => !o.order_status || o.order_status === 'Pending').length;
+  const processingCount = orders.filter(o => o.order_status === 'Processing' || o.order_status === 'Admin Verified' || o.order_status === 'Confirmed').length;
   const shippedCount = orders.filter(o => o.order_status === 'Shipped').length;
   const deliveredCount = orders.filter(o => o.order_status === 'Delivered').length;
-
   const returnedOrdersList = orders.filter(o => o.order_status === 'Returned');
   const cancelledOrdersList = orders.filter(o => o.order_status === 'Cancelled');
 
@@ -473,18 +480,15 @@ export default function AdminPanel() {
 
       <main style={{ padding: '30px', flex: 1, maxWidth: '1400px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
         
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '12px', marginBottom: '30px' }}>
+        {/* মেট্রিকস কার্ড */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '12px', marginBottom: '30px' }}>
           <div style={{ backgroundColor: '#111', border: '1px solid #222', padding: '15px 10px', borderRadius: '6px', textAlign: 'center' }}>
             <span style={{ fontSize: '9px', color: '#8A8A8A', textTransform: 'uppercase', letterSpacing: '1px', display: 'block', marginBottom: '6px' }}>পেন্ডিং</span>
             <strong style={{ fontSize: '20px', color: '#e67e22' }}>{pendingCount}</strong>
           </div>
           <div style={{ backgroundColor: '#111', border: '1px solid #222', padding: '15px 10px', borderRadius: '6px', textAlign: 'center' }}>
-            <span style={{ fontSize: '9px', color: '#8A8A8A', textTransform: 'uppercase', letterSpacing: '1px', display: 'block', marginBottom: '6px' }}>ভেরিফিকেশন</span>
-            <strong style={{ fontSize: '20px', color: '#f39c12' }}>{pendingVerifyCount}</strong>
-          </div>
-          <div style={{ backgroundColor: '#111', border: '1px solid #222', padding: '15px 10px', borderRadius: '6px', textAlign: 'center' }}>
-            <span style={{ fontSize: '9px', color: '#8A8A8A', textTransform: 'uppercase', letterSpacing: '1px', display: 'block', marginBottom: '6px' }}>ভেরিফাইড</span>
-            <strong style={{ fontSize: '20px', color: '#3498db' }}>{verifiedCount}</strong>
+            <span style={{ fontSize: '9px', color: '#8A8A8A', textTransform: 'uppercase', letterSpacing: '1px', display: 'block', marginBottom: '6px' }}>প্রসেসিং</span>
+            <strong style={{ fontSize: '20px', color: '#2ecc71' }}>{processingCount}</strong>
           </div>
           <div style={{ backgroundColor: '#111', border: '1px solid #222', padding: '15px 10px', borderRadius: '6px', textAlign: 'center' }}>
             <span style={{ fontSize: '9px', color: '#8A8A8A', textTransform: 'uppercase', letterSpacing: '1px', display: 'block', marginBottom: '6px' }}>শিফটেড</span>
@@ -493,12 +497,12 @@ export default function AdminPanel() {
           <div style={{ backgroundColor: '#111', border: '1px solid #e74c3c', padding: '15px 10px', borderRadius: '6px', textAlign: 'center' }}>
             <span style={{ fontSize: '9px', color: '#e74c3c', textTransform: 'uppercase', letterSpacing: '1px', display: 'block', marginBottom: '4px' }}>রিটার্নড ({returnedCount})</span>
             <strong style={{ fontSize: '13px', color: '#e74c3c' }}>৳ {returnedDeliveryLoss}</strong>
-            <span style={{ fontSize: '7px', color: '#8A8A8A', display: 'block', marginTop: '2px' }}>ডেলিভারি লস</span>
+            <span style={{ fontSize: '7px', color: '#8A8A8A', display: 'block', marginTop: '2px' }}>লস</span>
           </div>
           <div style={{ backgroundColor: '#111', border: '1px solid #95a5a6', padding: '15px 10px', borderRadius: '6px', textAlign: 'center' }}>
             <span style={{ fontSize: '9px', color: '#95a5a6', textTransform: 'uppercase', letterSpacing: '1px', display: 'block', marginBottom: '4px' }}>বাতিল ({cancelledCount})</span>
             <strong style={{ fontSize: '13px', color: '#95a5a6' }}>৳ {cancelledDeliveryLoss}</strong>
-            <span style={{ fontSize: '7px', color: '#8A8A8A', display: 'block', marginTop: '2px' }}>ডেলিভারি লস</span>
+            <span style={{ fontSize: '7px', color: '#8A8A8A', display: 'block', marginTop: '2px' }}>লস</span>
           </div>
           <div style={{ backgroundColor: '#111', border: '1px solid #222', padding: '15px 10px', borderRadius: '6px', textAlign: 'center' }}>
             <span style={{ fontSize: '9px', color: '#8A8A8A', textTransform: 'uppercase', letterSpacing: '1px', display: 'block', marginBottom: '6px' }}>ডেলিভার্ড</span>
@@ -514,7 +518,7 @@ export default function AdminPanel() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', backgroundColor: '#111', padding: '15px', borderRadius: '6px', border: '1px solid #222', flexWrap: 'wrap', gap: '10px' }}>
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '12px', color: '#8A8A8A' }}>Filter:</span>
-              {['All', 'Pending', 'Pending Verification', 'Admin Verified', 'Shipped', 'Delivered', 'Returned', 'Cancelled'].map(status => (
+              {['All', 'Pending', 'Processing', 'Shipped', 'Delivered', 'Returned', 'Cancelled'].map(status => (
                 <button 
                   key={status} 
                   onClick={() => setFilterStatus(status)} 
@@ -525,12 +529,13 @@ export default function AdminPanel() {
               ))}
             </div>
 
-            {filterStatus === 'Admin Verified' && (
+            {/* Processing ফিল্টারে থাকাকালীন সকল প্রসেসিং অর্ডারের স্টিকার একসাথে A4 পেপারে প্রিন্ট করার বাটন */}
+            {filterStatus === 'Processing' && (
               <button 
-                onClick={() => handlePrintAllVerifiedA4(filteredOrders)}
+                onClick={() => handlePrintAllProcessingA4(filteredOrders)}
                 style={{ backgroundColor: '#2ecc71', color: '#000', border: 'none', padding: '8px 16px', fontSize: '11px', fontWeight: 'bold', borderRadius: '4px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
               >
-                <span>🖨️</span> Print All Verified Stickers (A4 Grid)
+                <span>🖨️</span> Print All Processing Stickers (A4 Grid)
               </button>
             )}
 
@@ -574,10 +579,15 @@ export default function AdminPanel() {
                     const deliveryChg = order.delivery_charge !== undefined ? order.delivery_charge : Math.max(0, (order.total_amount || order.grand_total || subtotal) - subtotal + discountAmt);
                     const grandTot = order.total_amount || order.grand_total || (subtotal + deliveryChg - discountAmt);
 
+                    const statusLower = currentStatus.toLowerCase();
+                    const isConfirmed = statusLower === 'processing' || statusLower === 'admin verified' || statusLower === 'confirmed' || statusLower === 'delivered';
+
                     return (
                       <tr key={order.id} style={{ borderBottom: '1px solid #222', transition: 'background 0.2s' }}>
-                        <td style={{ padding: '14px', fontWeight: 'bold', color: '#D4AF7C' }}>
-                          {order.order_id}
+                        <td style={{ padding: '14px', fontWeight: 'bold' }}>
+                          <span style={{ color: isConfirmed ? '#2ecc71' : '#D4AF7C' }}>
+                            {order.order_id}
+                          </span>
                           <div style={{ fontSize: '9px', color: '#8A8A8A', fontWeight: 'normal', marginTop: '2px' }}>
                             {new Date(order.created_at).toLocaleDateString()}
                           </div>
@@ -623,24 +633,22 @@ export default function AdminPanel() {
                         <td style={{ padding: '14px' }}>
                           <span style={{ 
                             padding: '4px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase',
-                            backgroundColor: currentStatus === 'Admin Verified' || currentStatus === 'Confirmed' ? 'rgba(52, 152, 219, 0.1)' : currentStatus === 'Shipped' ? 'rgba(241, 196, 15, 0.1)' : currentStatus === 'Delivered' ? 'rgba(46, 204, 113, 0.1)' : currentStatus === 'Returned' ? 'rgba(231, 76, 60, 0.1)' : currentStatus === 'Cancelled' ? 'rgba(149, 165, 166, 0.1)' : 'rgba(230, 126, 34, 0.1)',
-                            color: currentStatus === 'Admin Verified' || currentStatus === 'Confirmed' ? '#3498db' : currentStatus === 'Shipped' ? '#f1c40f' : currentStatus === 'Delivered' ? '#2ecc71' : currentStatus === 'Returned' ? '#e74c3c' : currentStatus === 'Cancelled' ? '#95a5a6' : '#e67e22',
-                            border: `1px solid ${currentStatus === 'Admin Verified' || currentStatus === 'Confirmed' ? '#3498db' : currentStatus === 'Shipped' ? '#f1c40f' : currentStatus === 'Delivered' ? '#2ecc71' : currentStatus === 'Returned' ? '#e74c3c' : currentStatus === 'Cancelled' ? '#95a5a6' : '#e67e22'}`
+                            backgroundColor: isConfirmed ? 'rgba(46, 204, 113, 0.1)' : currentStatus === 'Shipped' ? 'rgba(241, 196, 15, 0.1)' : currentStatus === 'Delivered' ? 'rgba(46, 204, 113, 0.1)' : currentStatus === 'Returned' ? 'rgba(231, 76, 60, 0.1)' : currentStatus === 'Cancelled' ? 'rgba(149, 165, 166, 0.1)' : 'rgba(230, 126, 34, 0.1)',
+                            color: isConfirmed ? '#2ecc71' : currentStatus === 'Shipped' ? '#f1c40f' : currentStatus === 'Delivered' ? '#2ecc71' : currentStatus === 'Returned' ? '#e74c3c' : currentStatus === 'Cancelled' ? '#95a5a6' : '#e67e22',
+                            border: `1px solid ${isConfirmed ? '#2ecc71' : currentStatus === 'Shipped' ? '#f1c40f' : currentStatus === 'Delivered' ? '#2ecc71' : currentStatus === 'Returned' ? '#e74c3c' : currentStatus === 'Cancelled' ? '#95a5a6' : '#e67e22'}`
                           }}>
                             {currentStatus}
                           </span>
                         </td>
                         <td style={{ padding: '14px' }}>
                           <select 
-                            value={currentStatus}
+                            value={order.order_status || 'Pending'}
                             disabled={updatingId === order.id}
                             onChange={(e) => updateOrderStatus(order, e.target.value)}
                             style={{ backgroundColor: '#080808', border: '1px solid #333', color: '#FAF9F6', padding: '6px', borderRadius: '4px', fontSize: '11px', outline: 'none', cursor: 'pointer' }}
                           >
                             <option value="Pending">Pending</option>
-                            <option value="Pending Verification">Pending Verification</option>
-                            <option value="Admin Verified">Admin Verified</option>
-                            <option value="Confirmed">Confirmed</option>
+                            <option value="Processing">Processing</option>
                             <option value="Shipped">Shipped</option>
                             <option value="Delivered">Delivered</option>
                             <option value="Returned">Returned</option>
@@ -648,12 +656,23 @@ export default function AdminPanel() {
                           </select>
                         </td>
                         <td style={{ padding: '14px', textAlign: 'right' }}>
-                          <button 
-                            onClick={() => handlePrintSticker(order)}
-                            style={{ backgroundColor: '#D4AF7C', color: '#080808', border: 'none', padding: '6px 10px', fontSize: '10px', fontWeight: 'bold', borderRadius: '4px', cursor: 'pointer' }}
-                          >
-                            🖨️ Sticker
-                          </button>
+                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                            {/* হোয়াটসঅ্যাপ বাটন */}
+                            <button 
+                              onClick={() => sendWhatsAppNotification(order)}
+                              title="Send WhatsApp Message"
+                              style={{ backgroundColor: '#25D366', color: '#fff', border: 'none', padding: '6px 10px', fontSize: '11px', fontWeight: 'bold', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
+                            >
+                              💬 WA
+                            </button>
+                            {/* স্টিকার প্রিন্ট বাটন */}
+                            <button 
+                              onClick={() => handlePrintSticker(order)}
+                              style={{ backgroundColor: '#D4AF7C', color: '#080808', border: 'none', padding: '6px 10px', fontSize: '10px', fontWeight: 'bold', borderRadius: '4px', cursor: 'pointer' }}
+                            >
+                              🖨️ Sticker
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );

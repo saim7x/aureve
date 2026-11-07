@@ -13,6 +13,9 @@ export default function CheckoutPage() {
   const [address, setAddress] = useState('');
   const [district, setDistrict] = useState('Brahmanbaria');
   
+  // ইউজার ও অথেন্টিকেশন স্টেট
+  const [user, setUser] = useState(null);
+
   // গ্লোবাল রিস্ক লিমিট ও কাস্টমার রিস্ক স্টেট
   const [maxAllowedRiskRate, setMaxAllowedRiskRate] = useState(30);
   const [allSystemOrders, setAllSystemOrders] = useState([]);
@@ -52,6 +55,14 @@ export default function CheckoutPage() {
   }, []);
 
   const fetchInitialData = async () => {
+    // সেশন চেক করা
+    const { data: { session } } = await supabase.auth.getSession();
+    setUser(session?.user || null);
+
+    supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+    });
+
     // ১. অ্যাডমিন সেটিংস ও ডেলিভারি চার্জ ফেচ করা
     const { data: settingsData } = await supabase
       .from('admin_settings')
@@ -152,7 +163,6 @@ export default function CheckoutPage() {
 
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   
-  // ডাইনামিক ডেলিভারি চার্জ ক্যালকুলেশন (বেস চার্জ + অতিরিক্ত পণ্যের চার্জ)
   const totalItemCount = cartItems.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
   const extraItemsCount = Math.max(0, totalItemCount - 1);
   
@@ -162,7 +172,6 @@ export default function CheckoutPage() {
 
   let calculatedDeliveryCharge = cartItems.length > 0 ? (baseDeliveryFee + (extraItemsCount * dbCharges.extraItem)) : 0;
 
-  // ফ্রি ডেলিভারি থ্রেশহোল্ড চেক
   if (subtotal >= dbCharges.freeThreshold) {
     calculatedDeliveryCharge = 0;
   }
@@ -184,9 +193,10 @@ export default function CheckoutPage() {
   
   const customProductsInCart = [];
   cartItems.forEach((item, index) => {
-    const isCustom = item.category?.toLowerCase().includes('custom') || 
-                     item.title?.toLowerCase().includes('custom') || 
-                     item.title?.toLowerCase().includes('name');
+    const catStr = (item.category || '').toLowerCase();
+    const titleStr = (item.title || '').toLowerCase();
+    const isCustom = catStr === 'custom' || catStr.includes('custom') || titleStr.includes('custom') || titleStr.includes('name');
+
     if (isCustom) {
       const qty = item.quantity || 1;
       for (let q = 0; q < qty; q++) {
@@ -262,7 +272,7 @@ export default function CheckoutPage() {
     if (hasCustomProduct) {
       if (applySameNameToAll) {
         if (!masterGlobalName.trim()) {
-          showToast('সকল প্রোডাক্টের জন্য প্রযোজ্য কাস্টম নাম প্রদান করুন।');
+          showToast('সকল কাস্টম প্রোডাক্টের জন্য প্রযোজ্য নাম প্রদান করুন।');
           return;
         }
       } else {
@@ -286,8 +296,11 @@ export default function CheckoutPage() {
     const methodDesc = paymentType === 'Cash on Delivery' ? 'Cash on Delivery' : `Online Full Payment (${onlineSubMethod})`;
 
     const updatedCartItems = cartItems.map((item, idx) => {
-      const isCustom = item.category?.toLowerCase().includes('custom') || item.title?.toLowerCase().includes('custom') || item.title?.toLowerCase().includes('name');
-      if (!isCustom) return { ...item, customization: item.customization || null };
+      const catStr = (item.category || '').toLowerCase();
+      const titleStr = (item.title || '').toLowerCase();
+      const isCustom = catStr === 'custom' || catStr.includes('custom') || titleStr.includes('custom') || titleStr.includes('name');
+
+      if (!isCustom) return { ...item, customization: null };
 
       if (applySameNameToAll) {
         return { ...item, customization: masterGlobalName };
@@ -328,6 +341,7 @@ export default function CheckoutPage() {
         discount_amount: totalDiscountAmount,
         total_amount: grandTotal,
         grand_total: grandTotal,
+        customer_email: user?.email || null,
         coupon_code: appliedCodesStr || null,
         applied_coupons: appliedCoupons,
         items: updatedCartItems,
@@ -385,7 +399,7 @@ export default function CheckoutPage() {
 
     localStorage.removeItem('aureve_cart');
     setSuccessBanner(`অর্ডার সফলভাবে সম্পন্ন হয়েছে! (${orderId}) | মোট: ৳${grandTotal} | হোয়াটসঅ্যাপে যোগাযোগ করা হবে।`);
-    setTimeout(() => { router.push('/'); }, 7000);
+    setTimeout(() => { router.push('/orders'); }, 5000);
   };
 
   return (
@@ -399,7 +413,7 @@ export default function CheckoutPage() {
         </div>
       )}
 
-      {/* ডাইনামিক ফ্রি ডেলিভারি ব্যানার */}
+      {/* ফ্রি ডেলিভারি ব্যানার */}
       <div style={{ backgroundColor: '#D4AF7C', color: '#080808', fontSize: '11px', padding: '8px 12px', textAlign: 'center', fontWeight: '600', letterSpacing: '1px' }}>
         Free Delivery on orders above ৳{dbCharges.freeThreshold.toLocaleString()} | Elegance in Every Detail
       </div>
@@ -410,6 +424,7 @@ export default function CheckoutPage() {
         </div>
       )}
 
+      {/* Clean Header with only Brand Name */}
       <header style={{ position: 'sticky', top: 0, zIndex: 40, backgroundColor: '#080808', borderBottom: '1px solid #222222', padding: '0 20px', height: '75px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Link href="/" style={{ fontFamily: "'Playfair Display', serif", fontSize: '24px', fontWeight: 'bold', letterSpacing: '2px', textDecoration: 'none', color: '#D4AF7C' }}>AUREVÉ</Link>
         <Link href="/shop" style={{ color: '#FAF9F6', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1.5px', textDecoration: 'none', fontWeight: '600' }}>Continue Shopping</Link>
@@ -447,7 +462,7 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* কাস্টম প্রোডাক্ট থাকলে টিক চিহ্ন অপশন এবং নাম লেখার বক্স */}
+              {/* শুধুমাত্র প্রকৃত কাস্টম প্রোডাক্ট থাকলে এই সেকশনটি দেখাবে */}
               {hasCustomProduct && (
                 <div style={{ backgroundColor: '#FFF8EC', border: '1px solid #D4AF7C', padding: '15px', borderRadius: '6px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px dashed #D4AF7C', paddingBottom: '10px' }}>
@@ -466,7 +481,7 @@ export default function CheckoutPage() {
                   {applySameNameToAll ? (
                     <div>
                       <label style={{ fontSize: '10px', textTransform: 'uppercase', fontWeight: 'bold', color: '#D4AF7C', display: 'block', marginBottom: '4px' }}>
-                        সকল প্রোডাক্টের জন্য অভিন্ন নাম (Global Name) *
+                        সকল কাস্টম প্রোডাক্টের জন্য অভিন্ন নাম (Global Name) *
                       </label>
                       <input 
                         type="text" 
@@ -480,7 +495,7 @@ export default function CheckoutPage() {
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       <span style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 'bold', color: '#D4AF7C' }}>
-                        প্রতিটি প্রোডাক্টের জন্য আলাদা নাম দিন (Individual Engraving Names) *
+                        প্রতিটি কাস্টম প্রোডাক্টের জন্য আলাদা নাম দিন (Individual Engraving Names) *
                       </span>
                       {customProductsInCart.map((cp, idx) => {
                         const itemImg = cp.image || cp.img || (cp.images && cp.images[0]) || '';

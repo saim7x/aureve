@@ -1,4 +1,4 @@
-export const metadata = {
+﻿export const metadata = {
   title: 'AUREVÉ — Elegance in Every Detail',
   description: 'Handcrafted luxury accessories and custom base lights.',
   icons: {

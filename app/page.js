@@ -1,5 +1,5 @@
 ﻿'use client';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import BottomNav from './components/BottomNav';
@@ -11,6 +11,10 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   
+  // ইউজার ও অথেন্টিকেশন স্টেট
+  const [user, setUser] = useState(null);
+  const [authChecking, setAuthChecking] = useState(true);
+
   // ডাইনামিক সেটিংস স্টেট
   const [freeDeliveryThreshold, setFreeDeliveryThreshold] = useState(2000);
   const [announcementText, setAnnouncementText] = useState('✨ Free Delivery on orders over ৳1000 across Bangladesh! ✨');
@@ -32,7 +36,18 @@ export default function Home() {
       try {
         setLoading(true);
 
-        // ১. অ্যাডমিন সেটিংস ফেচ করা (ব্যানার, টেক্সট, থ্রেশহোল্ড, কালেকশন ইমেজ)
+        // ১. ইনিশিয়াল সেশন চেক করা
+        const { data: { session } } = await supabase.auth.getSession();
+        setUser(session?.user || null);
+        setAuthChecking(false);
+
+        // ২. রিয়েল-টাইম সেশন পরিবর্তন লিসেনার
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+          setUser(session?.user || null);
+          setAuthChecking(false);
+        });
+
+        // ৩. অ্যাডমিন সেটিংস ফেচ করা
         const { data: settingData } = await supabase
           .from('admin_settings')
           .select('*');
@@ -55,7 +70,7 @@ export default function Home() {
           });
         }
 
-        // ২. প্রোডাক্টস ও অর্ডার আইটেমস ফেচ করা
+        // ৪. প্রোডাক্টস ও অর্ডার আইটেমস ফেচ করা
         const { data: products, error: prodError } = await supabase.from('products').select('*');
         const { data: orderItems, error: ordError } = await supabase.from('order_items').select('*');
         
@@ -79,7 +94,6 @@ export default function Home() {
           };
         });
 
-        // সুপাবেসের order_items টেবিল থেকে রিয়েল সোল্ড কাউন্ট যোগ করা
         if (orderItems && orderItems.length > 0) {
           orderItems.forEach(item => {
             const prodId = item.product_id;
@@ -101,9 +115,19 @@ export default function Home() {
     fetchHomeData();
   }, []);
 
+  // ডাইনামিক গুগল লগইন হ্যান্ডলার
+  const handleGoogleLogin = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/`
+      }
+    });
+  };
+
   return (
     <div style={{ backgroundColor: '#FAF9F6', color: '#080808', minHeight: '100vh', paddingBottom: '90px', fontFamily: "'Montserrat', sans-serif" }}>
-      {/* Top Announcement Bar (ডাইনামিক অ্যামাউন্টসহ) */}
+      {/* Top Announcement Bar */}
       <div style={{ backgroundColor: '#D4AF7C', color: '#080808', fontSize: '11px', padding: '8px 12px', textAlign: 'center', fontWeight: '600', letterSpacing: '1px' }}>
         {announcementText}
       </div>
@@ -118,9 +142,25 @@ export default function Home() {
           <Link href="/shop" style={{ color: '#FAF9F6', fontSize: '11px', textTransform: 'uppercase', textDecoration: 'none', fontWeight: '600', letterSpacing: '1.5px' }}>Shop</Link>
           <Link href="/track" style={{ color: '#FAF9F6', fontSize: '11px', textTransform: 'uppercase', textDecoration: 'none', fontWeight: '600', letterSpacing: '1.5px' }}>Track Order</Link>
         </div>
-        <button onClick={() => setMenuOpen(true)} style={{ background: 'none', border: 'none', color: '#D4AF7C', fontSize: '24px', cursor: 'pointer', padding: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          ⋮
-        </button>
+
+        {/* Header Right Actions: Login / My Orders Button + Three-dot Menu */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {!authChecking && (
+            user ? (
+              <Link href="/orders" style={{ backgroundColor: '#D4AF7C', color: '#080808', padding: '6px 12px', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', textDecoration: 'none', borderRadius: '3px' }}>
+                My Orders
+              </Link>
+            ) : (
+              <button onClick={handleGoogleLogin} style={{ backgroundColor: '#D4AF7C', color: '#080808', border: 'none', padding: '6px 12px', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px', cursor: 'pointer', borderRadius: '3px' }}>
+                Login
+              </button>
+            )
+          )}
+
+          <button onClick={() => setMenuOpen(true)} style={{ background: 'none', border: 'none', color: '#D4AF7C', fontSize: '24px', cursor: 'pointer', padding: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            ⋮
+          </button>
+        </div>
       </header>
 
       {/* Sidebar Menu Drawer */}
@@ -136,12 +176,20 @@ export default function Home() {
               <Link href="/shop" onClick={() => setMenuOpen(false)} style={{ color: '#FAF9F6', textDecoration: 'none', padding: '8px 0' }}>Shop</Link>
               <Link href="/cart" onClick={() => setMenuOpen(false)} style={{ color: '#FAF9F6', textDecoration: 'none', padding: '8px 0' }}>Cart</Link>
               <Link href="/track" onClick={() => setMenuOpen(false)} style={{ color: '#FAF9F6', textDecoration: 'none', padding: '8px 0' }}>Track Order</Link>
+              
+              {user ? (
+                <Link href="/orders" onClick={() => setMenuOpen(false)} style={{ color: '#D4AF7C', textDecoration: 'none', padding: '8px 0', fontWeight: 'bold' }}>My Orders</Link>
+              ) : (
+                <button onClick={() => { setMenuOpen(false); handleGoogleLogin(); }} style={{ background: '#D4AF7C', color: '#080808', border: 'none', padding: '10px', textAlign: 'left', textTransform: 'uppercase', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer', borderRadius: '3px', marginTop: '10px' }}>
+                  Google Login
+                </button>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Hero Banner Section (অ্যাডমিন প্যানেল থেকে আপলোড করা ছবি ও টেক্সট সহ ডাইনামিক) */}
+      {/* Hero Banner Section */}
       <section style={{
         position: 'relative',
         backgroundColor: '#080808',
@@ -201,7 +249,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Our Collections Section (অ্যাডমিন প্যানেল থেকে আপলোড করা ছবি ও নাম সহ ডাইনামিক) */}
+      {/* Our Collections Section */}
       <main style={{ maxWidth: '1100px', margin: '40px auto', padding: '0 20px', boxSizing: 'border-box' }}>
         <div style={{ textAlign: 'center', marginBottom: '30px' }}>
           <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '26px', letterSpacing: '1.5px', margin: '0 0 8px 0' }}>
@@ -243,7 +291,7 @@ export default function Home() {
 
         </div>
 
-        {/* Dynamic Best Sellers Section with Price, Sold Count & Stock */}
+        {/* Dynamic Best Sellers Section */}
         <div style={{ textAlign: 'center', marginBottom: '35px' }}>
           <h2 style={{ fontFamily: "'Playfair Display', serif", fontSize: '28px', fontWeight: 'bold', margin: '0 0 8px 0' }}>Best Sellers</h2>
           <div style={{ width: '50px', height: '2px', backgroundColor: '#D4AF7C', margin: '0 auto' }}></div>
