@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -55,12 +55,22 @@ export default function CheckoutPage() {
   }, []);
 
   const fetchInitialData = async () => {
-    // সেশন চেক করা
+    // সেশন চেক করা এবং লগইন না থাকলে লগইন পেজে রিডাইরেক্ট করা
     const { data: { session } } = await supabase.auth.getSession();
-    setUser(session?.user || null);
+    
+    if (!session?.user) {
+      router.push('/login?next=/checkout');
+      return;
+    }
+
+    setUser(session.user);
 
     supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null);
+      if (!session?.user) {
+        router.push('/login?next=/checkout');
+      } else {
+        setUser(session.user);
+      }
     });
 
     // ১. অ্যাডমিন সেটিংস ও ডেলিভারি চার্জ ফেচ করা
