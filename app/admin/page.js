@@ -115,6 +115,7 @@ export default function AdminPanel() {
     const deliveryCharge = order.delivery_charge !== undefined ? order.delivery_charge : Math.max(0, (order.total_amount || order.grand_total || subtotal) - subtotal + discountAmount);
     const grandTotal = order.total_amount || order.grand_total || (subtotal + deliveryCharge - discountAmount);
     const paymentDesc = order.payment_method || order.payment_type || 'Cash on Delivery';
+    const transactionId = order.transaction_id || order.trx_id || 'N/A';
 
     let couponHtml = '';
     if (order.applied_coupons && Array.isArray(order.applied_coupons) && order.applied_coupons.length > 0) {
@@ -160,7 +161,7 @@ export default function AdminPanel() {
           <div class="section address-box">
             <span class="label">Deliver To (Customer)</span>
             <div class="value" style="font-size: 14px;">${order.customer_name}</div>
-            <div style="font-size: 12px; font-weight: bold; margin-top: 2px;">📱 ${order.whatsapp || order.mobile || order.phone}</div>
+            <div style="font-size: 12px; font-weight: bold; margin-top: 2px;">📱 Phone: ${order.phone || 'N/A'} | WhatsApp: ${order.whatsapp || 'N/A'}</div>
             <div style="font-size: 11px; margin-top: 2px;">📍 ${order.address}, ${order.district}</div>
           </div>
           <div class="section"><span class="label">Ordered Items & Customization</span><div>${itemsHtml}</div></div>
@@ -173,7 +174,7 @@ export default function AdminPanel() {
               <span>Total Amount:</span><span>৳${grandTotal}</span>
             </div>
             <div style="margin-top: 5px; font-size: 10px; font-weight: bold; color: ${paymentDesc.includes('Online') ? '#27ae60' : '#d35400'}; background: ${paymentDesc.includes('Online') ? 'rgba(39, 174, 96, 0.1)' : 'rgba(211, 84, 0, 0.1)'}; padding: 4px 6px; border-radius: 3px; text-align: center;">
-              Payment: ${paymentDesc}
+              Payment: ${paymentDesc} ${transactionId && transactionId !== 'N/A' ? `<br/>TrxID: <strong>${transactionId}</strong>` : ''}
             </div>
           </div>
 
@@ -240,6 +241,7 @@ export default function AdminPanel() {
       const deliveryCharge = order.delivery_charge !== undefined ? order.delivery_charge : Math.max(0, (order.total_amount || order.grand_total || subtotal) - subtotal + discountAmount);
       const grandTotal = order.total_amount || order.grand_total || (subtotal + deliveryCharge - discountAmount);
       const paymentDesc = order.payment_method || order.payment_type || 'Cash on Delivery';
+      const transactionId = order.transaction_id || order.trx_id || 'N/A';
 
       let couponHtml = '';
       if (order.applied_coupons && Array.isArray(order.applied_coupons) && order.applied_coupons.length > 0) {
@@ -260,7 +262,7 @@ export default function AdminPanel() {
           </div>
           <div style="background: #f9f9f9; padding: 6px; border-radius: 4px; border: 1px solid #ddd; margin-bottom: 6px; font-size: 10px;">
             <div style="font-size: 12px; font-weight: bold;">${order.customer_name}</div>
-            <div style="font-weight: bold;">📱 ${order.whatsapp || order.mobile || order.phone}</div>
+            <div style="font-weight: bold;">📱 Phone: ${order.phone || 'N/A'} | WA: ${order.whatsapp || 'N/A'}</div>
             <div>📍 ${order.address}, ${order.district}</div>
           </div>
           <div style="margin-bottom: 6px;">${itemsHtml}</div>
@@ -272,7 +274,7 @@ export default function AdminPanel() {
               <span>Total Amount:</span><span>৳${grandTotal}</span>
             </div>
             <div style="margin-top: 4px; font-size: 9px; font-weight: bold; color: ${paymentDesc.includes('Online') ? '#27ae60' : '#d35400'}; background: ${paymentDesc.includes('Online') ? 'rgba(39, 174, 96, 0.1)' : 'rgba(211, 84, 0, 0.1)'}; padding: 3px; border-radius: 2px; text-align: center;">
-              Payment: ${paymentDesc}
+              Payment: ${paymentDesc} ${transactionId && transactionId !== 'N/A' ? `<br/>TrxID: <strong>${transactionId}</strong>` : ''}
             </div>
           </div>
         </div>
@@ -314,7 +316,6 @@ export default function AdminPanel() {
     printWindow.document.close();
   };
 
-  // প্রফেশনাল ও রয়্যাল হোয়াটসঅ্যাপ মেসেজ জেনারেটর (প্রোডাক্ট টাইটেল ও কনফার্মেশন রিকোয়েস্টসহ)
   const sendWhatsAppNotification = (order) => {
     const phone = order.whatsapp || order.mobile || order.phone;
     if (!phone) {
@@ -334,7 +335,6 @@ export default function AdminPanel() {
     const trackingLink = `${protocol}${host}/track?orderId=${cleanOrderCode}`;
     const reviewLink = `${protocol}${host}/review?order_id=${order.id}`;
 
-    // অর্ডারের প্রোডাক্টের নাম বা টাইটেল বের করা
     let productTitle = order.product_name || '';
     if (!productTitle && order.items && Array.isArray(order.items) && order.items.length > 0) {
       productTitle = order.items.map(i => i.name || i.product_name || i.title || i.product_title).filter(Boolean).join(', ');
@@ -363,13 +363,8 @@ export default function AdminPanel() {
       msg += `🔍 Live Tracking:\n${trackingLink}\n\n`;
       msg += `অনুগ্রহ করে ডেলিভারি প্রতিনিধির জন্য আপনার ফোনটি সচল রাখুন।`;
     } else if (currentStatus === 'Delivered') {
-      msg += `আপনার পার্সেলটি (*${productTitle}*) সফলভাবে আপনার হাতে পৌঁছে গেছে (**Delivered**)! আশা করি **AUREVÉ**-এর সাথে আপনার অভিজ্ঞতা অসাধারণ ছিল। ✨\n\n`;
-      msg += `আমাদের প্রোডাক্ট সম্পর্কে আপনার মূল্যবান রিভিউ ও মতামত জানাতে ভিজিট করুন:\n${reviewLink}\n\n`;
+      msg += `আপনার পার্সেলটি (*${productTitle}*) সফলভাবে আপনার হাতে পৌঁছে গেছে (**Delivered**)!\n\n`;
       msg += `রয়্যাল এলিগেন্স বজায় রাখতে আবার আপনাকে আমন্ত্রণ জানাচ্ছি। ধন্যবাদ!`;
-    } else if (currentStatus === 'Returned')  {
-      msg += `আপডেট: আপনার অর্ডারটি (*${productTitle}*) ডেলিভারি সম্পন্ন না হওয়ার কারণে রিটার্ন করা হয়েছে। কোনো সহায়তার প্রয়োজন হলে আমাদের সাথে যোগাযোগ করুন।\n\n*AUREVÉ Support*`;
-    } else if (currentStatus === 'Cancelled') {
-      msg += `বিজ্ঞপ্তি: আপনার অর্ডারটি (*${productTitle}*) বাতিল (**Cancelled**) করা হয়েছে। ভবিষ্যতে আপনাকে সেবা দেওয়ার অপেক্ষায় রইলাম।\n\n*AUREVÉ*`;
     } else {
       msg += `আপনার অর্ডার (*${productTitle}*)-এর বর্তমান আপডেট: *${currentStatus}*。\n\n`;
       msg += `স্ট্যটাস চেক করুন: ${trackingLink}`;
@@ -529,7 +524,6 @@ export default function AdminPanel() {
               ))}
             </div>
 
-            {/* Processing ফিল্টারে থাকাকালীন সকল প্রসেসিং অর্ডারের স্টিকার একসাথে A4 পেপারে প্রিন্ট করার বাটন */}
             {filterStatus === 'Processing' && (
               <button 
                 onClick={() => handlePrintAllProcessingA4(filteredOrders)}
@@ -558,9 +552,9 @@ export default function AdminPanel() {
                 <thead>
                   <tr style={{ backgroundColor: '#1a1a1a', color: '#D4AF7C', borderBottom: '1px solid #222', textTransform: 'uppercase', fontSize: '10px', letterSpacing: '1px' }}>
                     <th style={{ padding: '14px' }}>Order ID</th>
-                    <th style={{ padding: '14px' }}>Customer Info</th>
+                    <th style={{ padding: '14px' }}>Customer Info (Name, Phone, Address)</th>
                     <th style={{ padding: '14px' }}>Ordered Items & Customization</th>
-                    <th style={{ padding: '14px' }}>Amount & Pricing Breakdown</th>
+                    <th style={{ padding: '14px' }}>Amount & TrxID / Payment</th>
                     <th style={{ padding: '14px' }}>Status</th>
                     <th style={{ padding: '14px' }}>Change Status</th>
                     <th style={{ padding: '14px', textAlign: 'right' }}>Actions</th>
@@ -578,6 +572,7 @@ export default function AdminPanel() {
                     const discountAmt = order.discount_amount || 0;
                     const deliveryChg = order.delivery_charge !== undefined ? order.delivery_charge : Math.max(0, (order.total_amount || order.grand_total || subtotal) - subtotal + discountAmt);
                     const grandTot = order.total_amount || order.grand_total || (subtotal + deliveryChg - discountAmt);
+                    const transactionId = order.transaction_id || order.trx_id || 'N/A';
 
                     const statusLower = currentStatus.toLowerCase();
                     const isConfirmed = statusLower === 'processing' || statusLower === 'admin verified' || statusLower === 'confirmed' || statusLower === 'delivered';
@@ -592,11 +587,18 @@ export default function AdminPanel() {
                             {new Date(order.created_at).toLocaleDateString()}
                           </div>
                         </td>
+                        
+                        {/* কাস্টমারের পূর্ণাঙ্গ নাম, ফোন, হোয়াটসঅ্যাপ ও ঠিকানা */}
                         <td style={{ padding: '14px' }}>
-                          <div style={{ fontWeight: 'bold', color: '#FAF9F6' }}>{order.customer_name}</div>
-                          <div style={{ fontSize: '11px', color: '#8A8A8A' }}>📱 {order.whatsapp || order.mobile || order.phone}</div>
-                          <div style={{ fontSize: '10px', color: '#8A8A8A', maxWidth: '180px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>📍 {order.address}, {order.district}</div>
+                          <div style={{ fontWeight: 'bold', color: '#FAF9F6', fontSize: '13px' }}>{order.customer_name}</div>
+                          <div style={{ fontSize: '11px', color: '#2ecc71', fontWeight: '600', marginTop: '2px' }}>📱 Phone: {order.phone || order.mobile || 'N/A'}</div>
+                          <div style={{ fontSize: '11px', color: '#3498db', fontWeight: '600' }}>💬 WhatsApp: {order.whatsapp || 'N/A'}</div>
+                          <div style={{ fontSize: '11px', color: '#FAF9F6', marginTop: '3px', background: '#1a1a1a', padding: '4px 6px', borderRadius: '3px', border: '1px solid #333' }}>
+                            📍 <strong>ঠিকানা:</strong> {order.address}, {order.district}
+                          </div>
                         </td>
+
+                        {/* প্রোডাক্ট ও কাস্টমাইজড নাম */}
                         <td style={{ padding: '14px', maxWidth: '300px' }}>
                           {items.length > 0 ? (
                             items.map((item, iIdx) => {
@@ -605,31 +607,47 @@ export default function AdminPanel() {
                               const iQty = item.quantity || item.qty || 1;
                               const cText = item.customization || order.custom_engraving_name || '';
                               return (
-                                <div key={iIdx} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', background: '#161616', padding: '4px 8px', borderRadius: '4px', border: '1px solid #222' }}>
-                                  {iImg && <img src={iImg} alt="" style={{ width: '24px', height: '24px', objectFit: 'cover', borderRadius: '2px' }} />}
+                                <div key={iIdx} style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', background: '#161616', padding: '6px 8px', borderRadius: '4px', border: '1px solid #222' }}>
+                                  {iImg && <img src={iImg} alt="" style={{ width: '30px', height: '30px', objectFit: 'cover', borderRadius: '3px' }} />}
                                   <div style={{ overflow: 'hidden' }}>
-                                    <div style={{ fontSize: '11px', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{iName} (x{iQty})</div>
-                                    {cText && cText !== 'N/A' && <div style={{ fontSize: '9px', color: '#b8860b', fontWeight: 'bold' }}>Custom: "{cText}"</div>}
+                                    <div style={{ fontSize: '11px', fontWeight: 'bold', color: '#fff' }}>{iName} (x{iQty})</div>
+                                    {cText && cText !== 'N/A' && (
+                                      <div style={{ fontSize: '10px', color: '#D4AF7C', fontWeight: 'bold', backgroundColor: 'rgba(212, 175, 124, 0.1)', padding: '2px 5px', borderRadius: '2px', marginTop: '2px', display: 'inline-block' }}>
+                                        🎨 Custom Name: "{cText}"
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               );
                             })
                           ) : (
                             <div style={{ fontSize: '11px' }}>
-                              <strong>{order.product_name}</strong> (x{order.quantity || 1})
+                              <strong style={{ color: '#fff' }}>{order.product_name}</strong> (x{order.quantity || 1})
                               {order.custom_engraving_name && order.custom_engraving_name !== 'N/A' && (
-                                <div style={{ fontSize: '9px', color: '#b8860b', fontWeight: 'bold' }}>Custom: "{order.custom_engraving_name}"</div>
+                                <div style={{ fontSize: '10px', color: '#D4AF7C', fontWeight: 'bold', marginTop: '3px' }}>
+                                  🎨 Custom Name: "{order.custom_engraving_name}"
+                                </div>
                               )}
                             </div>
                           )}
                         </td>
+
+                        {/* পেমেন্ট পদ্ধতি, অ্যামাউন্ট ও ট্রানজেকশন আইডি (TrxID) */}
                         <td style={{ padding: '14px', fontSize: '11px' }}>
                           <div>Sub: ৳{subtotal}</div>
                           <div>Delivery: ৳{deliveryChg}</div>
                           {discountAmt > 0 && <div style={{ color: '#27ae60' }}>Disc: -৳{discountAmt}</div>}
-                          <div style={{ fontWeight: 'bold', color: '#D4AF7C', marginTop: '2px' }}>Total: ৳{grandTot}</div>
-                          <div style={{ fontSize: '10px', color: '#8A8A8A', marginTop: '2px' }}>{order.payment_method || 'COD'}</div>
+                          <div style={{ fontWeight: 'bold', color: '#D4AF7C', marginTop: '2px', fontSize: '12px' }}>Total: ৳{grandTot}</div>
+                          <div style={{ marginTop: '6px', padding: '4px 6px', backgroundColor: '#1a1a1a', borderRadius: '3px', border: '1px solid #333' }}>
+                            <div style={{ color: '#2ecc71', fontWeight: 'bold' }}>{order.payment_method || order.payment_type || 'COD'}</div>
+                            {transactionId && transactionId !== 'N/A' && (
+                              <div style={{ fontSize: '10px', color: '#f39c12', marginTop: '2px', fontWeight: 'bold' }}>
+                                TrxID: <span style={{ color: '#fff', background: '#333', padding: '1px 4px', borderRadius: '2px' }}>{transactionId}</span>
+                              </div>
+                            )}
+                          </div>
                         </td>
+
                         <td style={{ padding: '14px' }}>
                           <span style={{ 
                             padding: '4px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase',
@@ -657,7 +675,6 @@ export default function AdminPanel() {
                         </td>
                         <td style={{ padding: '14px', textAlign: 'right' }}>
                           <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center' }}>
-                            {/* হোয়াটসঅ্যাপ বাটন */}
                             <button 
                               onClick={() => sendWhatsAppNotification(order)}
                               title="Send WhatsApp Message"
@@ -665,7 +682,6 @@ export default function AdminPanel() {
                             >
                               💬 WA
                             </button>
-                            {/* স্টিকার প্রিন্ট বাটন */}
                             <button 
                               onClick={() => handlePrintSticker(order)}
                               style={{ backgroundColor: '#D4AF7C', color: '#080808', border: 'none', padding: '6px 10px', fontSize: '10px', fontWeight: 'bold', borderRadius: '4px', cursor: 'pointer' }}
