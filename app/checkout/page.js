@@ -201,10 +201,11 @@ export default function CheckoutPage() {
 
   const grandTotal = subtotal + (cartItems.length > 0 ? deliveryCharge : 0) - totalDiscountAmount;
   
+  // কাস্টম প্রোডাক্ট ফিল্টার করার নিখুঁত লজিক (Category বা Title-এ custom থাকলে সেটি কাস্টম প্রোডাক্ট হিসেবে ধরবে)
   const customProductsInCart = [];
   cartItems.forEach((item, index) => {
     const catStr = (item.category || '').toLowerCase();
-    const titleStr = (item.title || '').toLowerCase();
+    const titleStr = (item.title || item.product_name || '').toLowerCase();
     const isCustom = catStr === 'custom' || catStr.includes('custom') || titleStr.includes('custom') || titleStr.includes('name');
 
     if (isCustom) {
@@ -288,7 +289,7 @@ export default function CheckoutPage() {
       } else {
         for (let cp of customProductsInCart) {
           if (!customNamesMap[cp.uniqueKey]?.trim()) {
-            showToast(`"${cp.title}" এর সকল পিসের জন্য কাস্টম নাম প্রদান করুন।`);
+            showToast(`"${cp.title || cp.product_name}" এর সকল পিসের জন্য কাস্টম নাম প্রদান করুন।`);
             return;
           }
         }
@@ -307,7 +308,7 @@ export default function CheckoutPage() {
 
     const updatedCartItems = cartItems.map((item, idx) => {
       const catStr = (item.category || '').toLowerCase();
-      const titleStr = (item.title || '').toLowerCase();
+      const titleStr = (item.title || item.product_name || '').toLowerCase();
       const isCustom = catStr === 'custom' || catStr.includes('custom') || titleStr.includes('custom') || titleStr.includes('name');
 
       if (!isCustom) return { ...item, customization: null };
@@ -375,7 +376,7 @@ export default function CheckoutPage() {
       const orderItemsPayload = updatedCartItems.map(item => ({
         order_id: currentOrderId,
         product_id: item.id,
-        product_title: item.title,
+        product_title: item.title || item.product_name,
         quantity: item.quantity,
         price: item.price,
         unit_price: item.price
@@ -423,7 +424,6 @@ export default function CheckoutPage() {
         </div>
       )}
 
-      {/* ফ্রি ডেলিভারি ব্যানার */}
       <div style={{ backgroundColor: '#D4AF7C', color: '#080808', fontSize: '11px', padding: '8px 12px', textAlign: 'center', fontWeight: '600', letterSpacing: '1px' }}>
         Free Delivery on orders above ৳{dbCharges.freeThreshold.toLocaleString()} | Elegance in Every Detail
       </div>
@@ -434,7 +434,6 @@ export default function CheckoutPage() {
         </div>
       )}
 
-      {/* Clean Header with only Brand Name */}
       <header style={{ position: 'sticky', top: 0, zIndex: 40, backgroundColor: '#080808', borderBottom: '1px solid #222222', padding: '0 20px', height: '75px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Link href="/" style={{ fontFamily: "'Playfair Display', serif", fontSize: '24px', fontWeight: 'bold', letterSpacing: '2px', textDecoration: 'none', color: '#D4AF7C' }}>AUREVÉ</Link>
         <Link href="/shop" style={{ color: '#FAF9F6', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1.5px', textDecoration: 'none', fontWeight: '600' }}>Continue Shopping</Link>
@@ -472,7 +471,7 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* শুধুমাত্র প্রকৃত কাস্টম প্রোডাক্ট থাকলে এই সেকশনটি দেখাবে */}
+              {/* শুধুমাত্র কার্টে কাস্টম প্রোডাক্ট থাকলেই এই অপশনটি দেখাবে */}
               {hasCustomProduct && (
                 <div style={{ backgroundColor: '#FFF8EC', border: '1px solid #D4AF7C', padding: '15px', borderRadius: '6px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px dashed #D4AF7C', paddingBottom: '10px' }}>
@@ -484,7 +483,7 @@ export default function CheckoutPage() {
                       style={{ width: '16px', height: '16px', accentColor: '#D4AF7C', cursor: 'pointer' }} 
                     />
                     <label htmlFor="sameNameToggle" style={{ fontSize: '11px', fontWeight: 'bold', color: '#080808', cursor: 'pointer', textTransform: 'uppercase' }}>
-                      সকল কাস্টম প্রোডাক্টে একই নাম ব্যবহার করুন (Apply same name to all custom products)
+                      সকল কাস্টম প্রোডাক্টে একই নাম ব্যবহার করুন (Apply same name to all)
                     </label>
                   </div>
 
@@ -505,20 +504,21 @@ export default function CheckoutPage() {
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       <span style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 'bold', color: '#D4AF7C' }}>
-                        প্রতিটি কাস্টম প্রোডাক্টের জন্য আলাদা নাম দিন (Individual Engraving Names) *
+                        প্রতিটি কাস্টম প্রোডাক্টের জন্য আলাদা নাম দিন (Individual Names) *
                       </span>
-                      {customProductsInCart.map((cp, idx) => {
+                      {customProductsInCart.map((cp) => {
                         const itemImg = cp.image || cp.img || (cp.images && cp.images[0]) || '';
+                        const itemName = cp.title || cp.product_name || 'Custom Product';
                         return (
                           <div key={cp.uniqueKey} style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#FFF', padding: '8px', borderRadius: '4px', border: '1px solid #EDE6D9' }}>
                             {itemImg ? (
-                              <img src={itemImg} alt={cp.title} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #ddd' }} />
+                              <img src={itemImg} alt={itemName} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #ddd' }} />
                             ) : (
                               <div style={{ width: '40px', height: '40px', backgroundColor: '#eee', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', color: '#666' }}>No Img</div>
                             )}
                             <div style={{ flex: 1 }}>
                               <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#080808', display: 'block', marginBottom: '3px' }}>
-                                {cp.title} (পিস #{cp.pieceIndex + 1})
+                                {itemName} (পিস #{cp.pieceIndex + 1})
                               </span>
                               <input 
                                 type="text" 
@@ -555,7 +555,7 @@ export default function CheckoutPage() {
               
               {customerRiskInfo?.isRisky && (
                 <div style={{ backgroundColor: '#E8F8F5', border: '1px solid #27ae60', padding: '12px 15px', borderRadius: '6px', color: '#117A65', fontSize: '12px', lineHeight: '1.5', fontWeight: '600' }}>
-                  🌿 আপনার পূর্বের ডেলিভারি পারফরম্যান্স (রিটার্ন রেট: {customerRiskInfo.riskRate}%, ম্যাক্স লিমিট: {maxAllowedRiskRate}%) অনুযায়ী এই অর্ডারের জন্য ক্যাশ অন ডেলিভারি (COD) প্রযোজ্য নয়। অনুগ্রহ করে অনলাইন ফুল পেমেন্ট সম্পন্ন করে অর্ডারটি নিশ্চিত করুন।
+                  🌿 আপনার পূর্বের ডেলিভারি পারফরম্যান্স অনুযায়ী ক্যাশ অন ডেলিভারি প্রযোজ্য নয়। অনুগ্রহ করে অনলাইন ফুল পেমেন্ট সম্পন্ন করুন।
                 </div>
               )}
 
@@ -582,20 +582,15 @@ export default function CheckoutPage() {
 
                     <div style={{ backgroundColor: '#FFF', border: '1px solid #EDE6D9', padding: '12px', borderRadius: '4px', fontSize: '12px', lineHeight: '1.6', color: '#333' }}>
                       <strong style={{ color: '#D4AF7C', display: 'block', marginBottom: '4px' }}>📌 পেমেন্ট করার নিয়মাবলী:</strong>
-                      ১. আপনার {onlineSubMethod} অ্যাপ বা ডায়াল কোডে গিয়ে **Send Money** সিলেক্ট করুন。<br/>
-                      ২. পার্সোনাল নম্বর দিন: <strong style={{ color: '#080808' }}>+8801857251303</strong><br/>
-                      ৩. মোট <strong style={{ color: '#D4AF7C' }}>৳ {grandTotal}</strong> টাকা সেন্ড মানি করুন。<br/>
-                      ৪. পেমেন্ট শেষে পাওয়া **TrxID** কপি করে নিচের ঘরে বসান।
+                      ১. আপনার {onlineSubMethod} অ্যাপ বা ডায়াল কোডে গিয়ে **Send Money** করুন।<br/>
+                      ২. পার্সোনাল নম্বর: <strong style={{ color: '#080808' }}>+8801857251303</strong><br/>
+                      ৩. মোট <strong style={{ color: '#D4AF7C' }}>৳ {grandTotal}</strong> টাকা সেন্ড মানি করুন।<br/>
+                      ৪. পেমেন্ট শেষে প্রাপ্ত **TrxID** নিচের ঘরে দিন।
                     </div>
 
                     <div style={{ fontSize: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span>{onlineSubMethod} নম্বর: <strong>+8801857251303</strong></span>
                       <button type="button" onClick={() => copyToClipboard('+8801857251303', `${onlineSubMethod} Number`)} style={{ backgroundColor: '#D4AF7C', border: 'none', padding: '4px 8px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '3px' }}>নম্বর কপি করুন</button>
-                    </div>
-
-                    <div style={{ fontSize: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span>মোট অ্যামাউন্ট: <strong style={{ color: '#D4AF7C' }}>৳ {grandTotal}</strong></span>
-                      <button type="button" onClick={() => copyToClipboard(grandTotal.toString(), 'Amount')} style={{ backgroundColor: '#D4AF7C', border: 'none', padding: '4px 8px', fontSize: '10px', fontWeight: 'bold', cursor: 'pointer', borderRadius: '3px' }}>টাকা কপি করুন</button>
                     </div>
 
                     <div>
@@ -617,7 +612,7 @@ export default function CheckoutPage() {
             
             <div style={{ marginBottom: '15px', paddingBottom: '15px', borderBottom: '1px solid #EDE6D9' }}>
               <label style={{ fontSize: '11px', textTransform: 'uppercase', color: '#8A8A8A', display: 'block', marginBottom: '6px', fontWeight: 'bold' }}>
-                Have Promo Coupons? {allowMultipleCoupons ? '(Multiple Allowed)' : '(Single Coupon)'}
+                Have Promo Coupons?
               </label>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input 
@@ -657,7 +652,7 @@ export default function CheckoutPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '180px', overflowY: 'auto', marginBottom: '15px', paddingBottom: '12px', borderBottom: '1px solid #EDE6D9' }}>
               {cartItems.map((item, idx) => (
                 <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                  <span>{item.title} (x{item.quantity})</span>
+                  <span>{item.title || item.product_name} (x{item.quantity})</span>
                   <span style={{ fontWeight: '600' }}>৳ {item.price * item.quantity}</span>
                 </div>
               ))}
