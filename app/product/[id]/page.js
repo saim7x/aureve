@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -38,9 +38,16 @@ export default function ProductDetailPage() {
         console.error('Product fetch error:', prodError);
       }
 
+      // রিভিউ টেবিলের সাথে orders টেবিল জয়েন করে কাস্টমার নাম ও ইমেল আনা
       const { data: revData, error: revError } = await supabase
         .from('reviews')
-        .select('*')
+        .select(`
+          *,
+          orders (
+            customer_name,
+            customer_email
+          )
+        `)
         .eq('product_id', id);
       
       if (!revError && revData) {
@@ -120,6 +127,22 @@ export default function ProductDetailPage() {
       // ডান দিকে সোয়াইপ করলে পূর্ববর্তী ছবি আসবে
       setCurrentImageIndex(prev => (prev === 0 ? productImages.length - 1 : prev - 1));
     }
+  };
+
+  // অর্ডার টেবিল থেকে ইউজারের নাম অথবা ইমেইলের @ এর আগের অংশ বের করার ফাংশন
+  const getUserName = (rev) => {
+    if (rev.orders?.customer_name) {
+      return rev.orders.customer_name;
+    }
+    if (rev.orders?.customer_email && rev.orders.customer_email.includes('@')) {
+      return rev.orders.customer_email.split('@')[0];
+    }
+    if (rev.customer_name) return rev.customer_name;
+    if (rev.user_name) return rev.user_name;
+    if (rev.user_email && rev.user_email.includes('@')) {
+      return rev.user_email.split('@')[0];
+    }
+    return 'AUREVÉ Customer';
   };
 
   if (loading) {
@@ -341,13 +364,21 @@ export default function ProductDetailPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               {reviews.map((rev, idx) => (
                 <div key={idx} style={{ backgroundColor: '#FFF', border: '1px solid #EDE6D9', padding: '20px', borderRadius: '4px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <div style={{ color: '#D4AF7C', fontSize: '14px' }}>
-                      {'★'.repeat(rev.rating)}{'☆'.repeat(5 - rev.rating)}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                    <div>
+                      {/* অর্ডারের ডাটা থেকে কাস্টমার নাম বা ইমেলের অংশ প্রদর্শন */}
+                      <strong style={{ fontSize: '13px', color: '#080808', display: 'block', marginBottom: '2px' }}>
+                        {getUserName(rev)}
+                      </strong>
+                      <div style={{ color: '#D4AF7C', fontSize: '14px' }}>
+                        {'★'.repeat(rev.rating)}{'☆'.repeat(5 - rev.rating)}
+                      </div>
                     </div>
-                    <span style={{ fontSize: '11px', color: '#8A8A8A' }}>Verified Buyer</span>
+                    <span style={{ fontSize: '11px', color: '#27ae60', backgroundColor: '#E8F8F5', padding: '3px 8px', borderRadius: '3px', fontWeight: '600' }}>
+                      ✓ Verified Buyer
+                    </span>
                   </div>
-                  <p style={{ fontSize: '13px', color: '#333', margin: 0, lineHeight: 1.5 }}>{rev.comment}</p>
+                  <p style={{ fontSize: '13px', color: '#333', margin: '6px 0 0 0', lineHeight: 1.5 }}>{rev.comment}</p>
                 </div>
               ))}
             </div>
