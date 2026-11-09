@@ -1,9 +1,11 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { supabase } from '../lib/supabase';
 
 export default function MyOrdersPage() {
+  const router = useRouter();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
@@ -68,13 +70,49 @@ export default function MyOrdersPage() {
         return ord;
       }));
 
-      showToast('অর্ডারটি সফলভাবে কনফার্ম করা হয়েছে!');
+      showToast('অর্ডারটি সফলভাবে কনফার্ম করা হয়েছে!');
     } catch (err) {
       console.error('Error confirming order:', err.message);
-      showToast('অর্ডার কনফার্ম করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
+      showToast('অর্ডার কনফার্ম করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
     } finally {
       setActionLoadingId(null);
     }
+  };
+
+  // ইউজারের অর্ডার ক্যানসেল করার ফাংশন (Pending বা Processing থাকলেই কেবল কাজ করবে)
+  const handleCancelOrder = async (orderId) => {
+    if (!confirm('আপনি কি নিশ্চিতভাবে এই অর্ডারটি ক্যানসেল করতে চান?')) return;
+
+    try {
+      setActionLoadingId(orderId);
+      const { error } = await supabase
+        .from('orders')
+        .update({ order_status: 'Cancelled', status: 'Cancelled' })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      setOrders(prev => prev.map(ord => {
+        if (ord.id === orderId) {
+          return { ...ord, order_status: 'Cancelled', status: 'Cancelled' };
+        }
+        return ord;
+      }));
+
+      showToast('অর্ডারটি সফলভাবে ক্যানসেল করা হয়েছে!');
+    } catch (err) {
+      console.error('Error cancelling order:', err.message);
+      showToast('অর্ডার ক্যানসেল করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  // ডেলিভারড অর্ডারের ক্ষেত্রে নির্দিষ্ট প্রোডাক্টগুলোর ডাটা নিয়ে /review পেজে রিডাইরেক্ট করার ফাংশন
+  const handleGiveReview = (order) => {
+    // অর্ডারের আইটেমগুলোকে এনকোড করে ইউআরএলে পাঠানো হচ্ছে যাতে review পেজে গিয়ে শুধু এই প্রোডাক্টগুলোই পাওয়া যায়
+    const itemsData = encodeURIComponent(JSON.stringify(order.items || []));
+    router.push(`/review?orderId=${order.id}&items=${itemsData}`);
   };
 
   const filteredOrders = orders.filter(order => {
@@ -217,8 +255,8 @@ export default function MyOrdersPage() {
                 badgeBg = '#D4EDDA';
                 badgeColor = '#155724';
               } else if (isCancelledOrReturned) {
-                badgeBg = '#F8D7DA'; // লাল রঙের ব্যাকগ্রাউন্ড
-                badgeColor = '#721C24'; // গাঢ় লাল টেক্সট
+                badgeBg = '#F8D7DA';
+                badgeColor = '#721C24';
               }
 
               return (
@@ -301,30 +339,77 @@ export default function MyOrdersPage() {
                     </div>
                   </div>
 
+                  {/* Actions Area: Cancel / Confirm / Review */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #F0EFE9', paddingTop: '12px', flexWrap: 'wrap', gap: '10px' }}>
                     <span style={{ fontSize: '11px', color: '#666' }}>Order Date: {new Date(order.created_at).toLocaleDateString()}</span>
                     
-                    {currentStatus === 'pending' && (
-                      <button 
-                        onClick={() => handleConfirmOrder(order.id)}
-                        disabled={actionLoadingId === order.id}
-                        style={{
-                          backgroundColor: '#080808',
-                          color: '#D4AF7C',
-                          border: 'none',
-                          padding: '8px 16px',
-                          fontSize: '11px',
-                          fontWeight: 'bold',
-                          textTransform: 'uppercase',
-                          borderRadius: '4px',
-                          cursor: actionLoadingId === order.id ? 'not-allowed' : 'pointer',
-                          letterSpacing: '1px',
-                          opacity: actionLoadingId === order.id ? 0.7 : 1
-                        }}
-                      >
-                        {actionLoadingId === order.id ? 'Confirming...' : 'Confirm Order'}
-                      </button>
-                    )}
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                      {/* যদি স্ট্যাটাস pending হয়, তবে Confirm Order বাটন */}
+                      {currentStatus === 'pending' && (
+                        <button 
+                          onClick={() => handleConfirmOrder(order.id)}
+                          disabled={actionLoadingId === order.id}
+                          style={{
+                            backgroundColor: '#080808',
+                            color: '#D4AF7C',
+                            border: 'none',
+                            padding: '8px 16px',
+                            fontSize: '11px',
+                            fontWeight: 'bold',
+                            textTransform: 'uppercase',
+                            borderRadius: '4px',
+                            cursor: actionLoadingId === order.id ? 'not-allowed' : 'pointer',
+                            letterSpacing: '1px',
+                            opacity: actionLoadingId === order.id ? 0.7 : 1
+                          }}
+                        >
+                          {actionLoadingId === order.id ? 'Confirming...' : 'Confirm Order'}
+                        </button>
+                      )}
+
+                      {/* যদি স্ট্যাটাস pending বা processing হয়, তবে Cancel Order বাটন দেখাবে */}
+                      {(currentStatus === 'pending' || currentStatus === 'processing') && (
+                        <button 
+                          onClick={() => handleCancelOrder(order.id)}
+                          disabled={actionLoadingId === order.id}
+                          style={{
+                            backgroundColor: '#F8D7DA',
+                            color: '#721C24',
+                            border: '1px solid #F5C6CB',
+                            padding: '8px 16px',
+                            fontSize: '11px',
+                            fontWeight: 'bold',
+                            textTransform: 'uppercase',
+                            borderRadius: '4px',
+                            cursor: actionLoadingId === order.id ? 'not-allowed' : 'pointer',
+                            letterSpacing: '1px'
+                          }}
+                        >
+                          {actionLoadingId === order.id ? 'Cancelling...' : 'Cancel Order'}
+                        </button>
+                      )}
+
+                      {/* যদি স্ট্যাটাস delivered বা completed হয়, তবে Give Review বাটন দেখাবে */}
+                      {(currentStatus === 'delivered' || currentStatus === 'completed') && (
+                        <button 
+                          onClick={() => handleGiveReview(order)}
+                          style={{
+                            backgroundColor: '#D4AF7C',
+                            color: '#080808',
+                            border: 'none',
+                            padding: '8px 16px',
+                            fontSize: '11px',
+                            fontWeight: 'bold',
+                            textTransform: 'uppercase',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            letterSpacing: '1px'
+                          }}
+                        >
+                          Give Review &rarr;
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                 </div>
