@@ -108,11 +108,10 @@ export default function MyOrdersPage() {
     }
   };
 
-  // ডেলিভারড অর্ডারের ক্ষেত্রে নির্দিষ্ট প্রোডাক্টগুলোর ডাটা নিয়ে /review পেজে রিডাইরেক্ট করার ফাংশন
+  // নির্দিষ্ট order_id সহ /review পেজে রিডাইরেক্ট করার ফাংশন
   const handleGiveReview = (order) => {
-    // অর্ডারের আইটেমগুলোকে এনকোড করে ইউআরএলে পাঠানো হচ্ছে যাতে review পেজে গিয়ে শুধু এই প্রোডাক্টগুলোই পাওয়া যায়
-    const itemsData = encodeURIComponent(JSON.stringify(order.items || []));
-    router.push(`/review?orderId=${order.id}&items=${itemsData}`);
+    const orderIdParam = order.id; // অথবা order.order_code আপনার ডাটাবেজ স্ট্রাকচার অনুযায়ী
+    router.push(`/review?order_id=${orderIdParam}`);
   };
 
   const filteredOrders = orders.filter(order => {
