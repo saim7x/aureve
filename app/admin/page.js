@@ -345,7 +345,7 @@ export default function AdminPanel() {
 
     const currentStatus = order.order_status || 'Pending';
     let msg = `✨ *AUREVÉ* | *Elegance in Every Detail* ✨\n\n`;
-    msg += `Dear *${order.customer_name}*,\n`;
+    msg += `Dear *${order.customer_name}*,\n\n`;
 
     if (currentStatus === 'Pending') {
       msg += `আমরা আপনার অর্ডারটি সফলভাবে গ্রহণ করেছি। অর্ডারের নাম: *${productTitle}* (অর্ডার আইডি: *${order.order_id}*)\n\n`;
@@ -364,6 +364,8 @@ export default function AdminPanel() {
       msg += `অনুগ্রহ করে ডেলিভারি প্রতিনিধির জন্য আপনার ফোনটি সচল রাখুন।`;
     } else if (currentStatus === 'Delivered') {
       msg += `আপনার পার্সেলটি (*${productTitle}*) সফলভাবে আপনার হাতে পৌঁছে গেছে (**Delivered**)!\n\n`;
+      msg += `আমাদের এক্সক্লুসিভ কালেকশনটি আপনার কেমন লাগলো, সে বিষয়ে একটি সুন্দর রিভিউ দিয়ে আমাদের সাথে আপনার অভিজ্ঞতা শেয়ার করার জন্য বিনম্র অনুরোধ জানাচ্ছি। আপনার মূল্যবান রিভিউটি আমাদের পেজে যোগ করতে নিচের লিঙ্কে ক্লিক করুন:\n\n`;
+      msg += `⭐ *Give Your Review:*\n${reviewLink}\n\n`;
       msg += `রয়্যাল এলিগেন্স বজায় রাখতে আবার আপনাকে আমন্ত্রণ জানাচ্ছি। ধন্যবাদ!`;
     } else {
       msg += `আপনার অর্ডার (*${productTitle}*)-এর বর্তমান আপডেট: *${currentStatus}*。\n\n`;
