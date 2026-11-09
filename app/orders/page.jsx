@@ -12,6 +12,7 @@ export default function MyOrdersPage() {
   const [user, setUser] = useState(null);
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
+  const [reviewedOrderIds, setReviewedOrderIds] = useState([]);
 
   useEffect(() => {
     async function fetchUserAndOrders() {
@@ -28,16 +29,52 @@ export default function MyOrdersPage() {
         setUser(session.user);
         const userEmail = session.user.email;
 
-        const { data, error } = await supabase
+        // ১. ইউজারের অর্ডারগুলো ফেচ করা
+        const { data: ordersData, error: ordersError } = await supabase
           .from('orders')
           .select('*')
           .eq('customer_email', userEmail)
           .order('created_at', { ascending: false });
 
-        if (error) throw error;
-        setOrders(data || []);
+        if (ordersError) throw ordersError;
+
+        // ২. ইউজারের দেওয়া রিভিউগুলো ফেচ করা
+        const { data: reviewsData, error: reviewsError } = await supabase
+          .from('reviews')
+          .select('order_id')
+          .eq('user_email', userEmail);
+
+        let reviewedIds = [];
+        if (!reviewsError && reviewsData) {
+          reviewedIds = reviewsData.map(r => r.order_id);
+          setReviewedOrderIds(reviewedIds);
+        }
+
+        // ৩. কাস্টম সর্টিং: যে অর্ডারগুলোতে রিভিউ দেওয়ার সুযোগ আছে (যাদের রিভিউ বাটন থাকবে), সেগুলো সবার উপরে থাকবে।
+        // এরপর বাকি অর্ডারগুলো তাদের created_at অনুযায়ী নতুন থেকে পুরনো সাজানো থাকবে।
+        const sortedOrders = (ordersData || []).sort((a, b) => {
+          const aStatus = (a.order_status || a.status || 'Pending').toLowerCase();
+          const bStatus = (b.order_status || b.status || 'Pending').toLowerCase();
+          
+          const aIsDelivered = aStatus === 'delivered' || aStatus === 'completed';
+          const bIsDelivered = bStatus === 'delivered' || bStatus === 'completed';
+          
+          const aNeedsReview = aIsDelivered && !reviewedIds.includes(a.id);
+          const bNeedsReview = bIsDelivered && !reviewedIds.includes(b.id);
+
+          // যদি a-এর রিভিউ লাগে কিন্তু b-এর না লাগে, তবে a আগে আসবে (-1)
+          if (aNeedsReview && !bNeedsReview) return -1;
+          // যদি b-এর রিভিউ লাগে কিন্তু a-এর না লাগে, তবে b আগে আসবে (1)
+          if (!aNeedsReview && bNeedsReview) return 1;
+
+          // অন্যথায় ডিফল্টভাবে নতুন অর্ডার আগে থাকবে (created_at descending)
+          return new Date(b.created_at) - new Date(a.created_at);
+        });
+
+        setOrders(sortedOrders);
+
       } catch (err) {
-        console.error('Error fetching orders:', err.message);
+        console.error('Error fetching data:', err.message);
       } finally {
         setLoading(false);
       }
@@ -79,7 +116,6 @@ export default function MyOrdersPage() {
     }
   };
 
-  // ইউজারের অর্ডার ক্যানসেল করার ফাংশন (Pending বা Processing থাকলেই কেবল কাজ করবে)
   const handleCancelOrder = async (orderId) => {
     if (!confirm('আপনি কি নিশ্চিতভাবে এই অর্ডারটি ক্যানসেল করতে চান?')) return;
 
@@ -108,9 +144,8 @@ export default function MyOrdersPage() {
     }
   };
 
-  // নির্দিষ্ট order_id সহ /review পেজে রিডাইরেক্ট করার ফাংশন
   const handleGiveReview = (order) => {
-    const orderIdParam = order.id; // অথবা order.order_code আপনার ডাটাবেজ স্ট্রাকচার অনুযায়ী
+    const orderIdParam = order.id; 
     router.push(`/review?order_id=${orderIdParam}`);
   };
 
@@ -243,11 +278,11 @@ export default function MyOrdersPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {filteredOrders.map(order => {
               const currentStatus = (order.order_status || order.status || 'Pending').toLowerCase();
-              const isPending = currentStatus === 'pending' || currentStatus === 'processing' || currentStatus === 'active';
               const isCompleted = currentStatus === 'completed' || currentStatus === 'delivered';
               const isCancelledOrReturned = currentStatus === 'cancelled' || currentStatus === 'returned';
+              
+              const hasAlreadyReviewed = reviewedOrderIds.includes(order.id);
 
-              // ডাইনামিক স্ট্যাটাস কালার ও ব্যাকগ্রাউন্ড লজিক
               let badgeBg = '#FFF3CD';
               let badgeColor = '#856404';
               if (isCompleted) {
@@ -343,7 +378,6 @@ export default function MyOrdersPage() {
                     <span style={{ fontSize: '11px', color: '#666' }}>Order Date: {new Date(order.created_at).toLocaleDateString()}</span>
                     
                     <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-                      {/* যদি স্ট্যাটাস pending হয়, তবে Confirm Order বাটন */}
                       {currentStatus === 'pending' && (
                         <button 
                           onClick={() => handleConfirmOrder(order.id)}
@@ -366,7 +400,6 @@ export default function MyOrdersPage() {
                         </button>
                       )}
 
-                      {/* যদি স্ট্যাটাস pending বা processing হয়, তবে Cancel Order বাটন দেখাবে */}
                       {(currentStatus === 'pending' || currentStatus === 'processing') && (
                         <button 
                           onClick={() => handleCancelOrder(order.id)}
@@ -388,25 +421,30 @@ export default function MyOrdersPage() {
                         </button>
                       )}
 
-                      {/* যদি স্ট্যাটাস delivered বা completed হয়, তবে Give Review বাটন দেখাবে */}
                       {(currentStatus === 'delivered' || currentStatus === 'completed') && (
-                        <button 
-                          onClick={() => handleGiveReview(order)}
-                          style={{
-                            backgroundColor: '#D4AF7C',
-                            color: '#080808',
-                            border: 'none',
-                            padding: '8px 16px',
-                            fontSize: '11px',
-                            fontWeight: 'bold',
-                            textTransform: 'uppercase',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            letterSpacing: '1px'
-                          }}
-                        >
-                          Give Review &rarr;
-                        </button>
+                        hasAlreadyReviewed ? (
+                          <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#27ae60', backgroundColor: '#E8F8F5', padding: '8px 14px', borderRadius: '4px', border: '1px solid #A3E4D7' }}>
+                            ✓ Reviewed
+                          </span>
+                        ) : (
+                          <button 
+                            onClick={() => handleGiveReview(order)}
+                            style={{
+                              backgroundColor: '#D4AF7C',
+                              color: '#080808',
+                              border: 'none',
+                              padding: '8px 16px',
+                              fontSize: '11px',
+                              fontWeight: 'bold',
+                              textTransform: 'uppercase',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              letterSpacing: '1px'
+                            }}
+                          >
+                            Give Review &rarr;
+                          </button>
+                        )
                       )}
                     </div>
                   </div>
