@@ -383,8 +383,8 @@ export default function Home() {
           <div>
             <h4 style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '2px', color: '#D4AF7C', marginBottom: '12px', fontWeight: 'bold' }}>Connect With Us</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
-              <a href="https://www.facebook.com/share/19H1zPBJex/" target="_blank" rel="noopener noreferrer" style={{ color: '#A0A0A0', textDecoration: 'none' }}>Facebook Page</a>
-              <a href="https://www.instagram.com/aureve.b?psln=MTVzazFrenpoOG96OA==" target="_blank" rel="noopener noreferrer" style={{ color: '#A0A0A0', textDecoration: 'none' }}>Instagram Store</a>
+              <a href="https://www.facebook.com/share/1G2gqhA3jz/" target="_blank" rel="noopener noreferrer" style={{ color: '#A0A0A0', textDecoration: 'none' }}>Facebook Page</a>
+              <a href="https://www.instagram.com/aureve.l?obrf=Z2lqY2g1NjRtczRq" target="_blank" rel="noopener noreferrer" style={{ color: '#A0A0A0', textDecoration: 'none' }}>Instagram Store</a>
               <a href="https://www.tiktok.com/@aureve.b?_r=1&_t=ZS-9BAgz9XPvyo" target="_blank" rel="noopener noreferrer" style={{ color: '#A0A0A0', textDecoration: 'none' }}>TikTok Official</a>
             </div>
           </div>
