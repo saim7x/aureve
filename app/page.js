@@ -36,12 +36,12 @@ export default function Home() {
       try {
         setLoading(true);
 
-        // ১. ইনিশিয়াল সেশন চেক করা
+        // ১. ইনিশিয়াল সেশন চেক করা
         const { data: { session } } = await supabase.auth.getSession();
         setUser(session?.user || null);
         setAuthChecking(false);
 
-        // ২. রিয়েল-টাইম সেশন পরিবর্তন লিসেনার
+        // ২. রিয়েল-টাইম সেশন পরিবর্তন লিসেনার
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
           setUser(session?.user || null);
           setAuthChecking(false);
@@ -117,10 +117,11 @@ export default function Home() {
 
   // ডাইনামিক গুগল লগইন হ্যান্ডলার
   const handleGoogleLogin = async () => {
+    const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://aureve-bd.netlify.app';
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/`
+        redirectTo: `${currentOrigin}/`
       }
     });
   };
@@ -396,6 +397,16 @@ export default function Home() {
 
       <BottomNav />
       <style jsx global>{`
+        /* Netlify Badge Hide Code */
+        a[href*="netlify.com"][target="_blank"],
+        div[id*="netlify-badge"],
+        iframe[title*="Netlify"] {
+          display: none !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+        }
+
         .desktop-only-nav {
           display: flex;
           gap: 35px;
