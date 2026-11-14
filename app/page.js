@@ -1,4 +1,14 @@
-﻿'use client';
+/* Netlify Badge Hide */
+a[href*="netlify.com"][target="_blank"],
+div[id*="netlify-badge"],
+iframe[title*="Netlify"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+'use client';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
