@@ -1,8 +1,9 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../lib/supabase';
+import { trackInitiateCheckout, trackPurchaseOnce } from '../lib/metaPixel';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -47,6 +48,8 @@ export default function CheckoutPage() {
   const [appliedCoupons, setAppliedCoupons] = useState([]);
   const [couponError, setCouponError] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
+
+  const initCheckoutTrackedRef = useRef(false);
 
   useEffect(() => {
     const cart = JSON.parse(localStorage.getItem('aureve_cart')) || [];
@@ -200,6 +203,17 @@ export default function CheckoutPage() {
   if (totalDiscountAmount > subtotal) totalDiscountAmount = subtotal;
 
   const grandTotal = subtotal + (cartItems.length > 0 ? deliveryCharge : 0) - totalDiscountAmount;
+
+  useEffect(() => {
+    if (cartItems.length > 0 && !initCheckoutTrackedRef.current) {
+      trackInitiateCheckout({
+        contentIds: cartItems.map((item) => item.id).filter(Boolean),
+        totalValue: grandTotal,
+        numItems: totalItemCount,
+      });
+      initCheckoutTrackedRef.current = true;
+    }
+  }, [cartItems, grandTotal, totalItemCount]);
   
   // কাস্টম প্রোডাক্ট ফিল্টার করার নিখুঁত লজিক (Category বা Title-এ custom থাকলে সেটি কাস্টম প্রোডাক্ট হিসেবে ধরবে)
   const customProductsInCart = [];
@@ -365,12 +379,12 @@ export default function CheckoutPage() {
       }
     ]).select();
 
-    if (orderError) {
+    if (orderError || !orderData?.[0]) {
       showToast('অর্ডার প্রসেস করতে সমস্যা হয়েছে।');
       return;
     }
 
-    const currentOrderId = orderData?.[0]?.id || orderId;
+    const currentOrderId = orderData[0].id || orderId;
 
     if (updatedCartItems.length > 0) {
       const orderItemsPayload = updatedCartItems.map(item => ({
@@ -407,6 +421,14 @@ export default function CheckoutPage() {
         total_sales_generated: (parseFloat(c.total_sales_generated) || 0) + grandTotal
       }).eq('id', c.id);
     }
+
+    // Database-এ অর্ডার সফলভাবে সংরক্ষিত হওয়ার পর ডুপ্লিকেট-প্রুফ Purchase ইভেন্ট ট্রিগার
+    trackPurchaseOnce({
+      orderId: orderCode,
+      totalAmount: grandTotal,
+      contentIds: updatedCartItems.map((item) => item.id).filter(Boolean),
+      numItems: totalItemCount,
+    });
 
     localStorage.removeItem('aureve_cart');
     setSuccessBanner(`অর্ডার সফলভাবে সম্পন্ন হয়েছে! (${orderId}) | মোট: ৳${grandTotal} | হোয়াটসঅ্যাপে যোগাযোগ করা হবে।`);
