@@ -1,4 +1,5 @@
 'use client';
+import { trackViewContent, trackAddToCart } from '../../lib/metaPixel';
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
