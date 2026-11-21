@@ -22,6 +22,7 @@ export default function ProductDetailPage() {
   // টাচ সোয়াইপ হ্যান্ডেল করার জন্য রিফ (Touch Swipe Refs)
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
+  const viewTrackedId = useRef(null);
 
   useEffect(() => {
     async function fetchProductAndReviews() {
@@ -35,11 +36,20 @@ export default function ProductDetailPage() {
       
       if (!prodError && prodData) {
         setProduct(prodData);
+        if (viewTrackedId.current !== prodData.id) {
+          trackViewContent({
+            id: prodData.id,
+            name: prodData.title || prodData.name || 'Product',
+            price: prodData.price || 0,
+            category: prodData.category || 'Signature Collection',
+          });
+          viewTrackedId.current = prodData.id;
+        }
       } else {
         console.error('Product fetch error:', prodError);
       }
 
-      // রিভিউ টেবিলের সাথে orders টেবিল জয়েন করে কাস্টমার নাম ও ইমেল আনা
+      // রিভিউ টেবিলের সাথে orders টেবিল জয়েন করে কাস্টমার নাম ও ইমেল আনা
       const { data: revData, error: revError } = await supabase
         .from('reviews')
         .select(`
@@ -95,6 +105,15 @@ export default function ProductDetailPage() {
     }
     localStorage.setItem('aureve_cart', JSON.stringify(cart));
     setCartCount(cart.reduce((sum, item) => sum + item.quantity, 0));
+
+    trackAddToCart({
+      id: product.id,
+      name: product.title || product.name || 'Product',
+      price: product.price || 0,
+      quantity: quantity || 1,
+      category: product.category || 'Signature Collection',
+    });
+
     showToast('Product added to cart successfully!');
   };
 
