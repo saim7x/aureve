@@ -1,17 +1,18 @@
-﻿'use client';
+'use client';
 import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '../lib/supabase';
 import BottomNav from '../components/BottomNav';
 
 function ShopContent() {
+  const router = useRouter();
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [loading, setLoading] = useState(true);
   const [cartCount, setCartCount] = useState(0);
-  
+
   // ডাইনামিক ফ্রি ডেলিভারি থ্রেশহোল্ড ও অ্যানাউন্সমেন্ট টেক্সট স্টেট
   const [freeDeliveryThreshold, setFreeDeliveryThreshold] = useState(2000);
   const [announcementText, setAnnouncementText] = useState('✨ Free Delivery on orders over ৳1000 across Bangladesh! ✨');
@@ -138,7 +139,7 @@ function ShopContent() {
             { label: 'Other', value: 'Other Products' },
             { label: 'Custom', value: 'Custom Products' }
           ].map((cat) => (
-            <button 
+            <button
               key={cat.value}
               onClick={() => filterCategory(cat.value)}
               style={{
@@ -168,9 +169,9 @@ function ShopContent() {
             {filteredProducts.map((p) => {
               const imageUrl = (p.images && p.images[0]) ? p.images[0] : (p.image || 'https://images.unsplash.com/photo-1611591475170-438dcb90ce7b?q=80&w=600');
               const totalSold = p.realSales || 0;
-              
+
               const stock = p.stock !== undefined && p.stock !== null ? Number(p.stock) : 0;
-              
+
               const currentPrice = parseFloat(p.price) || 0;
               const rawOriginalPrice = p.original_price || p.cut_price || p.old_price;
               const originalPrice = rawOriginalPrice ? parseFloat(rawOriginalPrice) : 0;
@@ -178,11 +179,24 @@ function ShopContent() {
               const discountPercent = hasDiscount ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100) : 0;
 
               return (
-                <div key={p.id} style={{ backgroundColor: '#FAF9F6', border: '1px solid #EDE6D9', borderRadius: '6px', padding: '15px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div
+                  key={p.id}
+                  onClick={() => router.push(`/product/${p.id}`)}
+                  style={{
+                    backgroundColor: '#FAF9F6',
+                    border: '1px solid #EDE6D9',
+                    borderRadius: '6px',
+                    padding: '15px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer'
+                  }}
+                >
                   <div>
                     <div style={{ height: '260px', backgroundColor: '#EDE6D9', borderRadius: '4px', marginBottom: '15px', overflow: 'hidden', position: 'relative' }}>
                       <img src={imageUrl} alt={p.title || p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      
+
                       <span style={{ position: 'absolute', top: '10px', right: '10px', backgroundColor: '#080808', color: '#D4AF7C', fontSize: '10px', padding: '4px 8px', borderRadius: '3px', fontWeight: 'bold' }}>
                         Sold: {totalSold}
                       </span>
@@ -197,7 +211,7 @@ function ShopContent() {
                     <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '18px', fontWeight: 'bold', margin: '0 0 10px 0', textAlign: 'center' }}>
                       {p.title || p.name}
                     </h3>
-                    
+
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '0 0 15px 0', padding: '0 5px', flexWrap: 'wrap', gap: '5px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span style={{ color: '#D4AF7C', fontWeight: 'bold', fontSize: '16px' }}>৳ {currentPrice}</span>
@@ -210,7 +224,11 @@ function ShopContent() {
                       </span>
                     </div>
                   </div>
-                  <Link href={`/product/${p.id}`} style={{ backgroundColor: '#080808', color: '#FAF9F6', textAlign: 'center', textDecoration: 'none', padding: '12px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: 'bold', borderRadius: '3px', display: 'block' }}>
+                  <Link
+                    href={`/product/${p.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ backgroundColor: '#080808', color: '#FAF9F6', textAlign: 'center', textDecoration: 'none', padding: '12px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: 'bold', borderRadius: '3px', display: 'block' }}
+                  >
                     View Product
                   </Link>
                 </div>
