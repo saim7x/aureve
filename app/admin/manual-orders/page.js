@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -305,7 +305,7 @@ export default function ManualOrdersPanel() {
 
     const finalTrxId = mPaymentType.includes('Online') ? (mTransactionId.trim() || 'Online Paid') : 'Manual Order';
 
-    const { error: orderError } = await supabase.from('orders').insert([
+    const { data: orderData, error: orderError } = await supabase.from('orders').insert([
       {
         order_id: orderId,
         order_code: orderCode,
@@ -331,11 +331,28 @@ export default function ManualOrdersPanel() {
         status: 'Pending',
         order_status: 'Pending'
       }
-    ]);
+    ]).select();
 
     if (orderError) {
       alert('ম্যানুয়াল অর্ডার সেভ করতে সমস্যা হয়েছে: ' + orderError.message);
       return;
+    }
+
+    const currentOrderId = orderData?.[0]?.id || orderId;
+
+    // Home ও Shop পেজে Sold সংখ্যা আপডেট করার জন্য order_items টেবিলে আইটেম যুক্ত করা
+    const orderItemsPayload = formattedItems.map(item => ({
+      order_id: currentOrderId,
+      product_id: item.id,
+      product_title: item.title,
+      quantity: item.quantity,
+      price: item.price,
+      unit_price: item.price
+    }));
+
+    const { error: orderItemsError } = await supabase.from('order_items').insert(orderItemsPayload);
+    if (orderItemsError) {
+      alert('অর্ডার সেভ হলেও Sold হিসাবের জন্য order_items আপডেট করতে সমস্যা হয়েছে: ' + orderItemsError.message);
     }
 
     for (let item of mSelectedItems) {
