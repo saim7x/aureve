@@ -10,7 +10,7 @@ export default function Home() {
   const [bestSellers, setBestSellers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
-  
+
   // ইউজার ও অথেন্টিকেশন স্টেট
   const [user, setUser] = useState(null);
   const [authChecking, setAuthChecking] = useState(true);
@@ -32,6 +32,8 @@ export default function Home() {
   const [col3Img, setCol3Img] = useState('/images/collection-3.jpg');
 
   useEffect(() => {
+    let authSubscription = null;
+
     async function fetchHomeData() {
       try {
         setLoading(true);
@@ -46,6 +48,7 @@ export default function Home() {
           setUser(session?.user || null);
           setAuthChecking(false);
         });
+        authSubscription = subscription;
 
         // ৩. অ্যাডমিন সেটিংস ফেচ করা
         const { data: settingData } = await supabase
@@ -73,7 +76,7 @@ export default function Home() {
         // ৪. প্রোডাক্টস ও অর্ডার আইটেমস ফেচ করা
         const { data: products, error: prodError } = await supabase.from('products').select('*');
         const { data: orderItems, error: ordError } = await supabase.from('order_items').select('*');
-        
+
         if (prodError || !products || products.length === 0) {
           setBestSellers([]);
           setLoading(false);
@@ -113,6 +116,12 @@ export default function Home() {
       }
     }
     fetchHomeData();
+
+    return () => {
+      if (authSubscription) {
+        authSubscription.unsubscribe();
+      }
+    };
   }, []);
 
   // ডাইনামিক গুগল লগইন হ্যান্ডলার
@@ -176,7 +185,7 @@ export default function Home() {
               <Link href="/shop" onClick={() => setMenuOpen(false)} style={{ color: '#FAF9F6', textDecoration: 'none', padding: '8px 0' }}>Shop</Link>
               <Link href="/cart" onClick={() => setMenuOpen(false)} style={{ color: '#FAF9F6', textDecoration: 'none', padding: '8px 0' }}>Cart</Link>
               <Link href="/track" onClick={() => setMenuOpen(false)} style={{ color: '#FAF9F6', textDecoration: 'none', padding: '8px 0' }}>Track Order</Link>
-              
+
               {user ? (
                 <Link href="/orders" onClick={() => setMenuOpen(false)} style={{ color: '#D4AF7C', textDecoration: 'none', padding: '8px 0', fontWeight: 'bold' }}>My Orders</Link>
               ) : (
@@ -258,7 +267,7 @@ export default function Home() {
           <div style={{ width: '50px', height: '2px', backgroundColor: '#D4AF7C', margin: '0 auto' }}></div>
         </div>
         <div className="collections-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '25px', marginBottom: '50px' }}>
-          
+
           <Link href="/shop?category=Signature" style={{ textDecoration: 'none', color: 'inherit' }}>
             <div style={{ position: 'relative', height: '260px', borderRadius: '6px', overflow: 'hidden', border: '1px solid #EDE6D9', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
               <img src={col1Img} alt={col1Title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -309,11 +318,24 @@ export default function Home() {
               const discountPercent = hasDiscount ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100) : 0;
 
               return (
-                <div key={product.id} style={{ backgroundColor: '#FAF9F6', border: '1px solid #EDE6D9', borderRadius: '6px', padding: '15px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                <div
+                  key={product.id}
+                  onClick={() => router.push(`/product/${product.id}`)}
+                  style={{
+                    backgroundColor: '#FAF9F6',
+                    border: '1px solid #EDE6D9',
+                    borderRadius: '6px',
+                    padding: '15px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer'
+                  }}
+                >
                   <div>
                     <div style={{ height: '260px', backgroundColor: '#EDE6D9', borderRadius: '4px', marginBottom: '15px', overflow: 'hidden', position: 'relative' }}>
                       <img src={product.image} alt={product.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      
+
                       {/* Sold Count Badge */}
                       <span style={{ position: 'absolute', top: '10px', right: '10px', backgroundColor: '#080808', color: '#D4AF7C', fontSize: '10px', padding: '4px 8px', borderRadius: '3px', fontWeight: 'bold' }}>
                         Sold: {product.totalSold}
@@ -328,7 +350,7 @@ export default function Home() {
                     </div>
 
                     <h3 style={{ fontFamily: "'Playfair Display', serif", fontSize: '18px', fontWeight: 'bold', margin: '0 0 10px 0', textAlign: 'center' }}>{product.title}</h3>
-                    
+
                     {/* Price & Stock info */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '0 0 15px 0', padding: '0 5px', flexWrap: 'wrap', gap: '5px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -342,7 +364,11 @@ export default function Home() {
                       </span>
                     </div>
                   </div>
-                  <Link href={`/product/${product.id}`} style={{ backgroundColor: '#080808', color: '#FAF9F6', textAlign: 'center', textDecoration: 'none', padding: '12px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: 'bold', borderRadius: '3px', display: 'block' }}>
+                  <Link
+                    href={`/product/${product.id}`}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ backgroundColor: '#080808', color: '#FAF9F6', textAlign: 'center', textDecoration: 'none', padding: '12px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: 'bold', borderRadius: '3px', display: 'block' }}
+                  >
                     View Product
                   </Link>
                 </div>
